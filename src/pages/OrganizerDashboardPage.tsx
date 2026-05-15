@@ -1,30 +1,272 @@
+import {
+  ArrowRight,
+  BarChart3,
+  CalendarPlus,
+  CheckCircle2,
+  Clock3,
+  MessageCircle,
+  ShieldCheck,
+  Star,
+  TrendingUp,
+  Users,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-import { organizerMetrics } from '@/data'
-import { PagePlaceholder } from '@/pages/PagePlaceholder'
+import {
+  CategoryChip,
+  OrganizerEventRow,
+  PageHeader,
+  StatsCard,
+  StatusBadge,
+} from '@/components'
+import {
+  events,
+  getEventById,
+  getOrganizerById,
+  getOrganizerEvents,
+  organizerMetrics,
+  organizers,
+  volunteerApplications,
+  volunteerProfile,
+} from '@/data'
+import { formatDate, getFillPercentage } from '@/lib/format'
+import type { EventCategory } from '@/types/migunani'
+
+const activeOrganizerId = 'org-aksara-muda'
+const metricIcons = [CalendarPlus, Users, TrendingUp, Clock3]
+const metricTones = ['green', 'yellow', 'dark', 'neutral'] as const
+const demandCategories: EventCategory[] = [
+  'Pendidikan',
+  'Lingkungan',
+  'Sosial',
+  'Literasi',
+]
 
 export function OrganizerDashboardPage() {
+  const organizer = getOrganizerById(activeOrganizerId) ?? organizers[0]
+  const organizerEvents = getOrganizerEvents(organizer.id)
+  const visibleEvents = organizerEvents.length > 0 ? organizerEvents : events.slice(0, 4)
+  const applicantRows = volunteerApplications
+    .map((application) => ({
+      application,
+      event: getEventById(application.eventId),
+    }))
+    .filter((row) => row.event)
+
   return (
-    <PagePlaceholder
-      eyebrow="Organizer Dashboard"
-      title="Kelola event, applicant, dan performa kegiatan relawan."
-      description="Dashboard organizer nanti berisi list event yang dibuat, statistik applicant, event performance, applicant preview, dan CTA create event."
-    >
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {organizerMetrics.map((metric) => (
-          <div key={metric.id} className="rounded-md border bg-muted p-4">
-            <p className="text-sm font-medium text-muted-foreground">{metric.label}</p>
-            <p className="mt-1 font-heading text-2xl font-bold">{metric.value}</p>
-            <p className="mt-1 text-xs font-semibold text-primary">{metric.helper}</p>
+    <div className="space-y-6 pb-20 lg:pb-0">
+      <PageHeader
+        eyebrow="Organizer Dashboard"
+        title="Kelola event, applicant, dan performa kegiatan relawan."
+        description="Dashboard organizer membantu penyelenggara melihat event aktif, keterisian kuota, applicant terbaru, dan kesiapan event berikutnya."
+        action={
+          <Link
+            to="/organizer/create"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+          >
+            Buat event
+            <ArrowRight size={17} />
+          </Link>
+        }
+      />
+
+      <section className="grid gap-4 lg:grid-cols-[1fr_340px]">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {organizerMetrics.map((metric, index) => (
+            <StatsCard
+              key={metric.id}
+              label={metric.label}
+              value={metric.value}
+              helper={metric.helper}
+              icon={metricIcons[index]}
+              tone={metricTones[index]}
+            />
+          ))}
+        </div>
+
+        <article className="rounded-lg border bg-deep-green p-5 text-primary-foreground shadow-sm">
+          <div className="flex items-center gap-4">
+            <span className="flex size-14 items-center justify-center rounded-md bg-secondary font-heading text-xl font-extrabold text-secondary-foreground">
+              {organizer.logoInitial}
+            </span>
+            <div>
+              <h2 className="font-heading text-xl font-extrabold">{organizer.name}</h2>
+              <p className="mt-1 text-sm text-primary-foreground/70">
+                {organizer.type} · {organizer.city}
+              </p>
+            </div>
           </div>
-        ))}
-      </div>
-      <Link
-        to="/organizer/create"
-        className="mt-6 inline-flex h-11 items-center rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
-      >
-        Buat event baru
-      </Link>
-    </PagePlaceholder>
+          <div className="mt-5 grid gap-3 text-sm font-semibold text-primary-foreground/80">
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck size={16} className="text-secondary" />
+              {organizer.verified ? 'Organizer terverifikasi' : 'Perlu verifikasi'}
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Star size={16} className="text-secondary" />
+              Rating {organizer.rating} dari relawan
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <MessageCircle size={16} className="text-secondary" />
+              Response time {organizer.responseTime}
+            </span>
+          </div>
+        </article>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
+        <div className="space-y-6">
+          <section className="space-y-4">
+            <SectionTitle
+              eyebrow="Managed events"
+              title="Event yang sedang dikelola."
+              description="Pantau status publikasi, jumlah applicant, dan keterisian slot relawan."
+            />
+            <div className="grid gap-4">
+              {visibleEvents.map((event) => (
+                <OrganizerEventRow key={event.id} event={event} />
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <SectionTitle
+              eyebrow="Applicant preview"
+              title="Pendaftar terbaru."
+              description="Preview ini memberi gambaran siapa yang mendaftar dan role yang dipilih."
+            />
+            <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+              <div className="grid grid-cols-[1fr_auto] gap-4 border-b bg-muted px-4 py-3 text-xs font-bold uppercase text-muted-foreground md:grid-cols-[1fr_160px_140px_120px]">
+                <span>Relawan</span>
+                <span className="hidden md:block">Role</span>
+                <span className="hidden md:block">Submitted</span>
+                <span>Status</span>
+              </div>
+              <div className="divide-y">
+                {applicantRows.map(({ application, event }) => (
+                  <article
+                    key={application.id}
+                    className="grid grid-cols-[1fr_auto] gap-4 px-4 py-4 md:grid-cols-[1fr_160px_140px_120px] md:items-center"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-heading text-base font-extrabold">
+                        {volunteerProfile.name}
+                      </p>
+                      <p className="mt-1 truncate text-sm text-muted-foreground">
+                        {event?.title ?? 'Event Migunani'}
+                      </p>
+                    </div>
+                    <span className="hidden text-sm font-semibold text-muted-foreground md:block">
+                      {application.role}
+                    </span>
+                    <span className="hidden text-sm font-semibold text-muted-foreground md:block">
+                      {formatDate(application.submittedAt)}
+                    </span>
+                    <StatusBadge status={application.status} />
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside className="space-y-4">
+          <section className="rounded-lg border bg-card p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                <BarChart3 size={19} />
+              </span>
+              <div>
+                <h2 className="font-heading text-xl font-extrabold">Event performance</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Rata-rata keterisian event aktif dihitung dari data dummy untuk
+                  membantu visual dashboard terasa operasional.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 space-y-4">
+              {visibleEvents.slice(0, 4).map((event) => {
+                const fill = getFillPercentage(event.registered, event.quota)
+
+                return (
+                  <div key={event.id}>
+                    <div className="flex items-center justify-between gap-3 text-sm font-bold">
+                      <span className="truncate">{event.title}</span>
+                      <span>{fill}%</span>
+                    </div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${fill}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
+          <section className="rounded-lg border bg-secondary p-5 text-secondary-foreground shadow-sm">
+            <p className="text-sm font-bold uppercase">Next action</p>
+            <h2 className="mt-2 font-heading text-2xl font-extrabold">
+              Publish event baru lebih cepat.
+            </h2>
+            <p className="mt-2 text-sm leading-6">
+              Gunakan form create event untuk melihat preview card sebelum event
+              dipublikasikan.
+            </p>
+            <Link
+              to="/organizer/create"
+              className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-brand-black px-4 text-sm font-bold text-white transition hover:bg-deep-green"
+            >
+              Create event
+              <ArrowRight size={16} />
+            </Link>
+          </section>
+
+          <section className="rounded-lg border bg-card p-5 shadow-sm">
+            <p className="text-sm font-bold uppercase text-primary">Category demand</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {demandCategories.map((category) => (
+                <CategoryChip key={category} category={category} />
+              ))}
+            </div>
+            <div className="mt-5 space-y-3">
+              <ChecklistItem label="Brief relawan untuk event weekend" />
+              <ChecklistItem label="Review applicant prioritas" />
+              <ChecklistItem label="Lengkapi benefit dan skill event" />
+            </div>
+          </section>
+        </aside>
+      </section>
+    </div>
+  )
+}
+
+function SectionTitle({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string
+  title: string
+  description: string
+}) {
+  return (
+    <div>
+      <p className="text-sm font-bold uppercase text-primary">{eyebrow}</p>
+      <h2 className="mt-2 font-heading text-3xl font-extrabold">{title}</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+        {description}
+      </p>
+    </div>
+  )
+}
+
+function ChecklistItem({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-md bg-muted p-3 text-sm font-semibold text-muted-foreground">
+      <CheckCircle2 size={16} className="shrink-0 text-primary" />
+      {label}
+    </div>
   )
 }
