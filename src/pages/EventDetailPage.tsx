@@ -16,10 +16,20 @@ import {
   PageHeader,
   StatusBadge,
 } from '@/components'
-import { getEventBySlug, getOrganizerById, getRelatedEvents, volunteerProfile } from '@/data'
+import {
+  getEventBySlug,
+  getOrganizerById,
+  getRelatedEvents,
+  volunteerApplications,
+  volunteerProfile,
+} from '@/data'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
 
-export function EventDetailPage() {
+type EventDetailPageProps = {
+  viewer?: 'public' | 'volunteer' | 'organizer'
+}
+
+export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
   const { slug } = useParams()
   const event = slug ? getEventBySlug(slug) : undefined
   const organizer = event ? getOrganizerById(event.organizerId) : undefined
@@ -35,15 +45,33 @@ export function EventDetailPage() {
   }
 
   const relatedEvents = getRelatedEvents(event.id)
+  const volunteerApplication = volunteerApplications.find(
+    (application) => application.eventId === event.id,
+  )
+  const isVolunteerView = viewer === 'volunteer'
+  const isOrganizerView = viewer === 'organizer'
+  const applyHref = isVolunteerView
+    ? `/volunteer/apply/${event.id}`
+    : `/login?next=/volunteer/apply/${event.id}`
+  const backHref = isVolunteerView
+    ? '/volunteer/dashboard'
+    : isOrganizerView
+      ? '/organizer'
+      : '/events'
+  const relatedDetailPathPrefix = isVolunteerView
+    ? '/volunteer/events'
+    : isOrganizerView
+      ? '/organizer/events'
+      : '/events'
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <Link
-        to="/events"
+        to={backHref}
         className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition hover:text-primary"
       >
         <ArrowLeft size={16} />
-        Kembali ke explore
+        {isVolunteerView || isOrganizerView ? 'Kembali ke dashboard' : 'Kembali ke explore'}
       </Link>
 
       <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
@@ -74,13 +102,12 @@ export function EventDetailPage() {
             title="Detail kegiatan"
             description={event.description}
             action={
-              <Link
-                to={`/login?next=/volunteer/apply/${event.id}`}
-                className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
-              >
-                Daftar jadi relawan
-                <ArrowRight size={17} />
-              </Link>
+              <EventAction
+                applyHref={applyHref}
+                isVolunteerView={isVolunteerView}
+                isOrganizerView={isOrganizerView}
+                status={volunteerApplication?.status}
+              />
             }
           />
 
@@ -142,13 +169,13 @@ export function EventDetailPage() {
 
         <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <EventDetailPanel event={event} organizer={organizer} />
-          <Link
-            to={`/login?next=/volunteer/apply/${event.id}`}
-            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
-          >
-            Daftar sekarang
-            <ArrowRight size={17} />
-          </Link>
+          <EventAction
+            applyHref={applyHref}
+            isVolunteerView={isVolunteerView}
+            isOrganizerView={isOrganizerView}
+            status={volunteerApplication?.status}
+            fullWidth
+          />
         </div>
       </section>
 
@@ -167,6 +194,7 @@ export function EventDetailPage() {
                 event={relatedEvent}
                 organizer={getOrganizerById(relatedEvent.organizerId)}
                 saved={volunteerProfile.savedEventIds.includes(relatedEvent.id)}
+                detailPathPrefix={relatedDetailPathPrefix}
                 variant="compact"
               />
             ))}
@@ -174,6 +202,64 @@ export function EventDetailPage() {
         </section>
       ) : null}
     </div>
+  )
+}
+
+function EventAction({
+  applyHref,
+  isVolunteerView,
+  isOrganizerView,
+  status,
+  fullWidth = false,
+}: {
+  applyHref: string
+  isVolunteerView: boolean
+  isOrganizerView: boolean
+  status?: string
+  fullWidth?: boolean
+}) {
+  if (isOrganizerView) {
+    return (
+      <div className={fullWidth ? 'grid gap-3' : 'flex flex-col gap-3 sm:flex-row'}>
+        <div className="rounded-md border bg-accent px-4 py-3 text-sm font-bold text-accent-foreground">
+          Event dikelola organizer
+        </div>
+        <Link
+          to="/organizer"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+        >
+          Kelola applicant
+          <ArrowRight size={17} />
+        </Link>
+      </div>
+    )
+  }
+
+  if (isVolunteerView && status) {
+    return (
+      <div className={fullWidth ? 'grid gap-3' : 'flex flex-col gap-3 sm:flex-row'}>
+        <div className="rounded-md border bg-accent px-4 py-3 text-sm font-bold text-accent-foreground">
+          Sudah terdaftar · Status {status}
+        </div>
+        <Link
+          to="/volunteer/dashboard?tab=applications"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+        >
+          Lihat aplikasi
+          <ArrowRight size={17} />
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      to={applyHref}
+      className={`inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green ${fullWidth ? 'w-full' : ''}`}
+    >
+      {isVolunteerView ? 'Daftar sebagai relawan' : 'Daftar jadi relawan'}
+      <ArrowRight size={17} />
+    </Link>
   )
 }
 

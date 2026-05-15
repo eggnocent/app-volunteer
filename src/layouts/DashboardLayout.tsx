@@ -16,7 +16,7 @@ export function DashboardLayout({ area }: DashboardLayoutProps) {
           <Outlet />
         </main>
       </div>
-      <MobileNav />
+      <MobileNav area={area} />
     </div>
   )
 }

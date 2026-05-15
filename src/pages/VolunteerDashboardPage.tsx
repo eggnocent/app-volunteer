@@ -172,6 +172,7 @@ function OverviewTab({
               event={event}
               organizer={getOrganizerById(event.organizerId)}
               saved
+              detailPathPrefix="/volunteer/events"
               variant="compact"
             />
           ))}
@@ -265,7 +266,7 @@ function ApplicationsTab() {
               </div>
 
               <Link
-                to={event ? `/events/${event.slug}` : '/events'}
+                to={event ? `/volunteer/events/${event.slug}` : '/events'}
                 className="inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted"
               >
                 Lihat event

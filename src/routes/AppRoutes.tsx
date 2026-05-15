@@ -24,11 +24,21 @@ export function AppRoutes() {
 
       <Route element={<DashboardLayout area="volunteer" />}>
         <Route path="volunteer/dashboard" element={<VolunteerDashboardPage />} />
+        <Route path="volunteer/events" element={<EventsPage viewer="volunteer" />} />
         <Route path="volunteer/apply/:eventId" element={<ApplyPage />} />
+        <Route
+          path="volunteer/events/:slug"
+          element={<EventDetailPage viewer="volunteer" />}
+        />
       </Route>
 
       <Route element={<DashboardLayout area="organizer" />}>
         <Route path="organizer" element={<OrganizerDashboardPage />} />
+        <Route path="organizer/events" element={<EventsPage viewer="organizer" />} />
+        <Route
+          path="organizer/events/:slug"
+          element={<EventDetailPage viewer="organizer" />}
+        />
         <Route path="organizer/create" element={<CreateEventPage />} />
       </Route>
 

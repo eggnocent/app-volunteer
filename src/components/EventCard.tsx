@@ -12,6 +12,7 @@ type EventCardProps = {
   organizer?: Organizer
   saved?: boolean
   onSavedChange?: (eventId: string) => void
+  detailPathPrefix?: string
   variant?: 'grid' | 'list' | 'compact'
   className?: string
 }
@@ -21,11 +22,13 @@ export function EventCard({
   organizer,
   saved = false,
   onSavedChange,
+  detailPathPrefix = '/events',
   variant = 'grid',
   className,
 }: EventCardProps) {
   const fill = getFillPercentage(event.registered, event.quota)
   const isList = variant === 'list'
+  const detailPath = `${detailPathPrefix}/${event.slug}`
 
   return (
     <article
@@ -36,7 +39,7 @@ export function EventCard({
       )}
     >
       <Link
-        to={`/events/${event.slug}`}
+        to={detailPath}
         className={cn(
           'relative block overflow-hidden bg-muted',
           isList ? 'h-56 md:h-full' : 'h-52',
@@ -75,7 +78,7 @@ export function EventCard({
           <CategoryChip category={event.category} />
           <div>
             <Link
-              to={`/events/${event.slug}`}
+              to={detailPath}
               className="font-heading text-xl font-extrabold leading-tight text-foreground transition hover:text-primary"
             >
               {event.title}

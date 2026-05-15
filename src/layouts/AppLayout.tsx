@@ -10,7 +10,7 @@ export function AppLayout() {
       <main className="w-full px-3 py-4 sm:px-4 lg:px-5">
         <Outlet />
       </main>
-      <MobileNav />
+      <MobileNav area="public" />
     </div>
   )
 }

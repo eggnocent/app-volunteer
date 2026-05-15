@@ -5,6 +5,7 @@ import {
   Home,
   LayoutDashboard,
   ListChecks,
+  LogOut,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
@@ -12,7 +13,6 @@ import { Logo } from '@/layouts/Logo'
 import { cn } from '@/lib/utils'
 
 const volunteerItems = [
-  { label: 'Discover', to: '/', icon: Home },
   { label: 'My Dashboard', to: '/volunteer/dashboard', icon: LayoutDashboard },
   {
     label: 'Applications',
@@ -24,10 +24,12 @@ const volunteerItems = [
     to: '/volunteer/dashboard?tab=certificates',
     icon: BadgeCheck,
   },
+  { label: 'Explore Events', to: '/volunteer/events', icon: Home },
 ]
 
 const organizerItems = [
   { label: 'Organizer', to: '/organizer', icon: BarChart3 },
+  { label: 'Explore Events', to: '/organizer/events', icon: Home },
   { label: 'Create Event', to: '/organizer/create', icon: CalendarPlus },
 ]
 
@@ -40,11 +42,18 @@ export function DashboardSidebar({ area }: DashboardSidebarProps) {
 
   return (
     <aside className="sticky top-4 hidden h-[calc(100svh-2rem)] w-72 shrink-0 rounded-lg border bg-card p-4 shadow-sm lg:flex lg:flex-col">
-      <Logo />
+      <Logo to={area === 'volunteer' ? '/volunteer/dashboard' : '/organizer'} />
 
       <div className="mt-8 space-y-6">
         <SidebarGroup label={area === 'volunteer' ? 'Volunteer' : 'Organizer'} items={items} />
       </div>
+      <Link
+        to="/"
+        className="mt-auto flex items-center gap-3 rounded-md border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+      >
+        <LogOut size={17} />
+        Logout
+      </Link>
     </aside>
   )
 }

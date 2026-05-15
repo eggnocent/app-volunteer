@@ -123,7 +123,11 @@ export function OrganizerDashboardPage() {
             />
             <div className="grid gap-4">
               {visibleEvents.map((event) => (
-                <OrganizerEventRow key={event.id} event={event} />
+                <OrganizerEventRow
+                  key={event.id}
+                  event={event}
+                  detailPathPrefix="/organizer/events"
+                />
               ))}
             </div>
           </section>

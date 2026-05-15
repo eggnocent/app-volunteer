@@ -7,9 +7,13 @@ import type { VolunteerEvent } from '@/types/migunani'
 
 type OrganizerEventRowProps = {
   event: VolunteerEvent
+  detailPathPrefix?: string
 }
 
-export function OrganizerEventRow({ event }: OrganizerEventRowProps) {
+export function OrganizerEventRow({
+  event,
+  detailPathPrefix = '/events',
+}: OrganizerEventRowProps) {
   const fill = getFillPercentage(event.registered, event.quota)
 
   return (
@@ -22,7 +26,7 @@ export function OrganizerEventRow({ event }: OrganizerEventRowProps) {
           </span>
         </div>
         <Link
-          to={`/events/${event.slug}`}
+          to={`${detailPathPrefix}/${event.slug}`}
           className="mt-3 block truncate font-heading text-lg font-extrabold text-foreground transition hover:text-primary"
         >
           {event.title}

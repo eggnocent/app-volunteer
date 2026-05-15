@@ -1,19 +1,52 @@
-import { CalendarPlus, Compass, Home, LayoutDashboard, Search } from 'lucide-react'
+import {
+  CalendarPlus,
+  Home,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Search,
+} from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 import { cn } from '@/lib/utils'
 
-const mobileItems = [
+type MobileNavProps = {
+  area: 'public' | 'volunteer' | 'organizer'
+}
+
+const publicItems = [
   { label: 'Home', to: '/', icon: Home },
   { label: 'Explore', to: '/events', icon: Search },
-  { label: 'Volunteer', to: '/volunteer/dashboard', icon: LayoutDashboard },
-  { label: 'Organizer', to: '/organizer', icon: Compass },
-  { label: 'Create', to: '/organizer/create', icon: CalendarPlus },
+  { label: 'Masuk', to: '/login', icon: LogIn },
 ]
 
-export function MobileNav() {
+const volunteerItems = [
+  { label: 'Dashboard', to: '/volunteer/dashboard', icon: Home },
+  { label: 'Explore', to: '/volunteer/events', icon: Search },
+  {
+    label: 'Apps',
+    to: '/volunteer/dashboard?tab=applications',
+    icon: LayoutDashboard,
+  },
+  { label: 'Logout', to: '/', icon: LogOut },
+]
+
+const organizerItems = [
+  { label: 'Organizer', to: '/organizer', icon: Home },
+  { label: 'Explore', to: '/organizer/events', icon: Search },
+  { label: 'Create', to: '/organizer/create', icon: CalendarPlus },
+  { label: 'Logout', to: '/', icon: LogOut },
+]
+
+export function MobileNav({ area }: MobileNavProps) {
+  const mobileItems =
+    area === 'public' ? publicItems : area === 'volunteer' ? volunteerItems : organizerItems
+
   return (
-    <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-lg border bg-card/95 p-1 shadow-lg backdrop-blur lg:hidden">
+    <nav
+      className="fixed inset-x-3 bottom-3 z-40 grid rounded-lg border bg-card/95 p-1 shadow-lg backdrop-blur lg:hidden"
+      style={{ gridTemplateColumns: `repeat(${mobileItems.length}, minmax(0, 1fr))` }}
+    >
       {mobileItems.map((item) => (
         <NavLink
           key={item.to}

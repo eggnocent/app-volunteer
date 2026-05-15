@@ -4,7 +4,11 @@ import { EventCard, FilterBar, PageHeader } from '@/components'
 import { events, getOrganizerById, volunteerProfile } from '@/data'
 import type { EventCategory, EventMode } from '@/types/migunani'
 
-export function EventsPage() {
+type EventsPageProps = {
+  viewer?: 'public' | 'volunteer' | 'organizer'
+}
+
+export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | 'Semua'>(
     'Semua',
@@ -14,6 +18,12 @@ export function EventsPage() {
   const [savedEventIds, setSavedEventIds] = useState<string[]>(
     volunteerProfile.savedEventIds,
   )
+  const detailPathPrefix =
+    viewer === 'volunteer'
+      ? '/volunteer/events'
+      : viewer === 'organizer'
+        ? '/organizer/events'
+        : '/events'
 
   const filteredEvents = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -98,6 +108,7 @@ export function EventsPage() {
               organizer={getOrganizerById(event.organizerId)}
               saved={savedEventIds.includes(event.id)}
               onSavedChange={toggleSaved}
+              detailPathPrefix={detailPathPrefix}
               variant={view}
             />
           ))}

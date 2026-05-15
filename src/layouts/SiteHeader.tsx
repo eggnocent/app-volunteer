@@ -7,8 +7,6 @@ import { cn } from '@/lib/utils'
 const publicNavItems = [
   { label: 'Discover', to: '/' },
   { label: 'Explore Events', to: '/events' },
-  { label: 'Untuk Relawan', to: '/login?next=/volunteer/dashboard' },
-  { label: 'Untuk Organizer', to: '/login?next=/organizer' },
 ]
 
 export function SiteHeader() {
