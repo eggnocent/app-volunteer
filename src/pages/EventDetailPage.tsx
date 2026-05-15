@@ -75,7 +75,7 @@ export function EventDetailPage() {
             description={event.description}
             action={
               <Link
-                to={`/apply/${event.id}`}
+                to={`/login?next=/volunteer/apply/${event.id}`}
                 className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
               >
                 Daftar jadi relawan
@@ -143,7 +143,7 @@ export function EventDetailPage() {
         <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <EventDetailPanel event={event} organizer={organizer} />
           <Link
-            to={`/apply/${event.id}`}
+            to={`/login?next=/volunteer/apply/${event.id}`}
             className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
           >
             Daftar sekarang

@@ -147,7 +147,7 @@ export function ApplyPage() {
           </div>
           <div className="flex flex-col gap-3 border-t p-6 sm:flex-row">
             <Link
-              to="/dashboard"
+              to="/volunteer/dashboard"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
             >
               Buka dashboard

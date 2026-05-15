@@ -87,6 +87,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+::selection {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
 button,
 input,
 textarea,

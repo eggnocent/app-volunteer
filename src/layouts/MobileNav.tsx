@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 const mobileItems = [
   { label: 'Home', to: '/', icon: Home },
   { label: 'Explore', to: '/events', icon: Search },
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
+  { label: 'Volunteer', to: '/volunteer/dashboard', icon: LayoutDashboard },
   { label: 'Organizer', to: '/organizer', icon: Compass },
   { label: 'Create', to: '/organizer/create', icon: CalendarPlus },
 ]

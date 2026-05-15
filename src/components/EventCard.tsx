@@ -45,7 +45,7 @@ export function EventCard({
       >
         <img
           src={event.image}
-          alt=""
+          alt={event.title}
           className="size-full object-cover transition duration-500 group-hover:scale-105"
         />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">

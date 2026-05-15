@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, LayoutDashboard, Search } from 'lucide-react'
+import { ArrowRight, LogIn, Search } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 import { Logo } from '@/layouts/Logo'
@@ -7,14 +7,14 @@ import { cn } from '@/lib/utils'
 const publicNavItems = [
   { label: 'Discover', to: '/' },
   { label: 'Explore Events', to: '/events' },
-  { label: 'Volunteer Dashboard', to: '/dashboard' },
-  { label: 'Organizer', to: '/organizer' },
+  { label: 'Untuk Relawan', to: '/login?next=/volunteer/dashboard' },
+  { label: 'Untuk Organizer', to: '/login?next=/organizer' },
 ]
 
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b bg-background/92 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="flex h-16 w-full items-center justify-between gap-4 px-3 sm:px-4 lg:px-5">
         <Logo />
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Main navigation">
@@ -44,21 +44,21 @@ export function SiteHeader() {
             Cari event
           </NavLink>
           <NavLink
-            to="/organizer/create"
+            to="/login"
             className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-deep-green"
           >
-            <Building2 size={16} />
-            Buat event
+            <LogIn size={16} />
+            Masuk
             <ArrowRight size={16} />
           </NavLink>
         </div>
 
         <NavLink
-          to="/dashboard"
+          to="/login"
           className="inline-flex size-10 items-center justify-center rounded-md border bg-card text-foreground shadow-sm md:hidden"
-          aria-label="Open dashboard"
+          aria-label="Open login"
         >
-          <LayoutDashboard size={18} />
+          <LogIn size={18} />
         </NavLink>
       </div>
     </header>
