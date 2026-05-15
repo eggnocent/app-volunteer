@@ -67,7 +67,7 @@ export function CreateEventPage() {
       endTime,
       durationHours: duration,
       quota,
-      registered: Math.min(12, quota),
+      registered: 0,
       status: 'Open',
       image: previewImage,
       shortDescription:

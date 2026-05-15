@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { EventCard, FilterBar, PageHeader } from '@/components'
 import { events, getOrganizerById, volunteerProfile } from '@/data'
@@ -9,7 +10,8 @@ type EventsPageProps = {
 }
 
 export function EventsPage({ viewer = 'public' }: EventsPageProps) {
-  const [search, setSearch] = useState('')
+  const [searchParams] = useSearchParams()
+  const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | 'Semua'>(
     'Semua',
   )

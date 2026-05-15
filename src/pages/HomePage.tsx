@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { CategoryChip, EventCard, StatsCard } from '@/components'
@@ -23,12 +24,16 @@ import {
 export function HomePage() {
   const totalSlots = events.reduce((sum, event) => sum + event.quota, 0)
   const totalRegistered = events.reduce((sum, event) => sum + event.registered, 0)
+  const [searchQuery, setSearchQuery] = useState('')
+  const exploreHref = searchQuery.trim()
+    ? `/events?q=${encodeURIComponent(searchQuery.trim())}`
+    : '/events'
 
   return (
     <div className="space-y-8 pb-20 lg:pb-0">
       <section className="relative min-h-[calc(100svh-6rem)] overflow-hidden rounded-lg border bg-deep-green text-primary-foreground shadow-sm">
-        <div className="absolute -left-24 top-8 h-52 w-80 rotate-[-18deg] rounded-[42%] bg-primary opacity-50" />
-        <div className="absolute -right-24 bottom-0 h-64 w-96 rotate-[-22deg] rounded-[45%] bg-secondary opacity-90" />
+        <div className="absolute -left-24 top-8 h-52 w-80 rotate-[-18deg] rounded-[42%] bg-primary opacity-45 blur-2xl" />
+        <div className="absolute -right-24 bottom-0 h-64 w-96 rotate-[-22deg] rounded-[45%] bg-secondary opacity-80 blur-2xl" />
         <div className="relative grid min-h-[calc(100svh-6rem)] items-center gap-8 p-6 sm:p-8 lg:grid-cols-[1.1fr_0.9fr] lg:p-10">
           <div className="flex flex-col justify-center gap-8">
             <div>
@@ -46,7 +51,13 @@ export function HomePage() {
               </p>
             </div>
 
-            <div className="rounded-lg border border-white/15 bg-white/10 p-2 backdrop-blur">
+            <form
+              className="rounded-lg border border-white/15 bg-white/10 p-2 backdrop-blur"
+              onSubmit={(event) => {
+                event.preventDefault()
+                window.location.href = exploreHref
+              }}
+            >
               <div className="grid gap-2 rounded-md bg-card p-2 text-foreground shadow-sm md:grid-cols-[1fr_auto]">
                 <label className="relative block">
                   <Search
@@ -54,21 +65,22 @@ export function HomePage() {
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                   />
                   <input
-                    readOnly
-                    value="Cari cleanup, mentoring, kesehatan..."
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Cari cleanup, mentoring, kesehatan..."
                     className="h-12 w-full rounded-md border bg-background pl-10 pr-3 text-sm font-semibold text-muted-foreground outline-none"
-                    aria-label="Search preview"
+                    aria-label="Cari event volunteer"
                   />
                 </label>
                 <Link
-                  to="/events"
+                  to={exploreHref}
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
                 >
                   Explore event
                   <ArrowRight size={17} />
                 </Link>
               </div>
-            </div>
+            </form>
           </div>
 
           <div className="grid content-center gap-4">

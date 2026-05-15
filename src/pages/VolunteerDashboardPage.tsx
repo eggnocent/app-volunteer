@@ -4,7 +4,6 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
-  FileCheck2,
   HeartHandshake,
   LayoutDashboard,
   ListChecks,
@@ -292,27 +291,6 @@ function CertificatesTab() {
           <CertificateCard key={certificate.id} certificate={certificate} />
         ))}
       </div>
-      <article className="rounded-lg border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-bold uppercase text-primary">Export preview</p>
-            <h2 className="mt-2 font-heading text-xl font-extrabold">
-              Ringkasan portofolio relawan
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Total {volunteerProfile.totalHours} jam kontribusi dari{' '}
-              {volunteerProfile.completedEvents} event selesai.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
-          >
-            <FileCheck2 size={17} />
-            Generate summary
-          </button>
-        </div>
-      </article>
     </section>
   )
 }

@@ -10,6 +10,7 @@ import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { OrganizerDashboardPage } from '@/pages/OrganizerDashboardPage'
+import { OrganizerApplicantsPage } from '@/pages/OrganizerApplicantsPage'
 import { VolunteerDashboardPage } from '@/pages/VolunteerDashboardPage'
 
 export function AppRoutes() {
@@ -34,6 +35,7 @@ export function AppRoutes() {
 
       <Route element={<DashboardLayout area="organizer" />}>
         <Route path="organizer" element={<OrganizerDashboardPage />} />
+        <Route path="organizer/applicants" element={<OrganizerApplicantsPage />} />
         <Route path="organizer/events" element={<EventsPage viewer="organizer" />} />
         <Route
           path="organizer/events/:slug"

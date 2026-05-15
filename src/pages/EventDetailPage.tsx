@@ -106,6 +106,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
                 applyHref={applyHref}
                 isVolunteerView={isVolunteerView}
                 isOrganizerView={isOrganizerView}
+                eventId={event.id}
                 status={volunteerApplication?.status}
               />
             }
@@ -173,6 +174,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
             applyHref={applyHref}
             isVolunteerView={isVolunteerView}
             isOrganizerView={isOrganizerView}
+            eventId={event.id}
             status={volunteerApplication?.status}
             fullWidth
           />
@@ -209,12 +211,14 @@ function EventAction({
   applyHref,
   isVolunteerView,
   isOrganizerView,
+  eventId,
   status,
   fullWidth = false,
 }: {
   applyHref: string
   isVolunteerView: boolean
   isOrganizerView: boolean
+  eventId: string
   status?: string
   fullWidth?: boolean
 }) {
@@ -225,7 +229,7 @@ function EventAction({
           Event dikelola organizer
         </div>
         <Link
-          to="/organizer"
+          to={`/organizer/applicants?event=${eventId}`}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
         >
           Kelola applicant

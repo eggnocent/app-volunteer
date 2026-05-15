@@ -12,7 +12,7 @@ type OrganizerEventRowProps = {
 
 export function OrganizerEventRow({
   event,
-  detailPathPrefix = '/events',
+  detailPathPrefix = '/organizer/events',
 }: OrganizerEventRowProps) {
   const fill = getFillPercentage(event.registered, event.quota)
 

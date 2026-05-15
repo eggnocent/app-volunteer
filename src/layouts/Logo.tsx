@@ -7,15 +7,15 @@ type LogoProps = {
 export function Logo({ to = '/' }: LogoProps) {
   return (
     <Link to={to} className="flex items-center gap-3" aria-label="Migunani home">
-      <span className="flex size-10 items-center justify-center rounded-md bg-primary font-heading text-xl font-extrabold text-primary-foreground shadow-sm">
-        M
+      <span className="flex size-10 items-center justify-center overflow-hidden rounded-md bg-primary shadow-sm">
+        <img src="/logo-mark.svg" alt="" className="size-full object-cover" />
       </span>
       <span className="leading-none">
         <span className="block font-heading text-lg font-extrabold text-foreground">
           Migunani
         </span>
         <span className="block text-xs font-medium text-muted-foreground">
-          Volunteer marketplace
+          Volunteer marketplace by Wish Me Luck Team
         </span>
       </span>
     </Link>

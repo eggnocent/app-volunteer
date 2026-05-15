@@ -33,6 +33,7 @@ const volunteerItems = [
 
 const organizerItems = [
   { label: 'Organizer', to: '/organizer', icon: Home },
+  { label: 'Applicants', to: '/organizer/applicants', icon: LayoutDashboard },
   { label: 'Explore', to: '/organizer/events', icon: Search },
   { label: 'Create', to: '/organizer/create', icon: CalendarPlus },
   { label: 'Logout', to: '/', icon: LogOut },
