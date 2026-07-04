@@ -3,11 +3,14 @@ import { useSearchParams } from 'react-router-dom'
 
 import { EventCard, FilterBar, PageHeader } from '@/components'
 import { events, getOrganizerById, volunteerProfile } from '@/data'
+import { getEventMatch } from '@/lib/match'
 import type { EventCategory, EventMode } from '@/types/migunani'
 
 type EventsPageProps = {
   viewer?: 'public' | 'volunteer' | 'organizer'
 }
+
+type SortOption = 'relevant' | 'newest' | 'remaining' | 'match'
 
 export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   const [searchParams] = useSearchParams()
@@ -17,6 +20,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   )
   const [selectedMode, setSelectedMode] = useState<EventMode | 'Semua'>('Semua')
   const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [sort, setSort] = useState<SortOption>('relevant')
   const [savedEventIds, setSavedEventIds] = useState<string[]>(
     volunteerProfile.savedEventIds,
   )
@@ -56,6 +60,30 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
     })
   }, [search, selectedCategory, selectedMode])
 
+  const sortedEvents = useMemo(() => {
+    return [...filteredEvents].sort((a, b) => {
+      if (sort === 'newest') {
+        return b.date.localeCompare(a.date)
+      }
+
+      if (sort === 'remaining') {
+        return b.quota - b.registered - (a.quota - a.registered)
+      }
+
+      if (sort === 'match') {
+        return (
+          getEventMatch(b, volunteerProfile).matchScore -
+          getEventMatch(a, volunteerProfile).matchScore
+        )
+      }
+
+      const aRelevant = Number(a.featured) * 20 + Number(a.status === 'Open') * 10
+      const bRelevant = Number(b.featured) * 20 + Number(b.status === 'Open') * 10
+
+      return bRelevant - aRelevant || a.date.localeCompare(b.date)
+    })
+  }, [filteredEvents, sort])
+
   function toggleSaved(eventId: string) {
     setSavedEventIds((current) =>
       current.includes(eventId)
@@ -85,17 +113,24 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <p className="text-sm font-semibold text-muted-foreground">
-          Menampilkan <span className="text-foreground">{filteredEvents.length}</span>{' '}
+          Menampilkan <span className="text-foreground">{sortedEvents.length}</span>{' '}
           dari {events.length} event
         </p>
-        <select className="h-10 w-fit rounded-md border bg-card px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
-          <option>Paling relevan</option>
-          <option>Terbaru</option>
-          <option>Kuota tersisa</option>
+        <select
+          value={sort}
+          onChange={(event) => setSort(event.target.value as SortOption)}
+          className="h-10 w-fit rounded-md border bg-card px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+        >
+          <option value="relevant">Paling relevan</option>
+          <option value="newest">Terbaru</option>
+          <option value="remaining">Kuota tersisa</option>
+          {viewer === 'volunteer' ? (
+            <option value="match">Match tertinggi</option>
+          ) : null}
         </select>
       </div>
 
-      {filteredEvents.length > 0 ? (
+      {sortedEvents.length > 0 ? (
         <section
           className={
             view === 'grid'
@@ -103,7 +138,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
               : 'grid gap-5'
           }
         >
-          {filteredEvents.map((event) => (
+          {sortedEvents.map((event) => (
             <EventCard
               key={event.id}
               event={event}
@@ -112,6 +147,9 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
               onSavedChange={toggleSaved}
               detailPathPrefix={detailPathPrefix}
               variant={view}
+              {...(viewer === 'volunteer'
+                ? getEventMatch(event, volunteerProfile)
+                : {})}
             />
           ))}
         </section>

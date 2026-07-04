@@ -49,6 +49,7 @@ export function CreateEventPage() {
     'Content & Documentation',
   ])
   const [published, setPublished] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
 
   const previewEvent = useMemo<VolunteerEvent>(() => {
     const duration = calculateDuration(startTime, endTime)
@@ -106,10 +107,18 @@ export function CreateEventPage() {
     )
   }
 
+  function publishPreview() {
+    setIsPublishing(true)
+    setTimeout(() => {
+      setIsPublishing(false)
+      setPublished(true)
+    }, 1100)
+  }
+
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <Link
-        to="/organizer"
+        to="/organizer/dashboard"
         className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition hover:text-primary"
       >
         <ArrowLeft size={16} />
@@ -123,11 +132,21 @@ export function CreateEventPage() {
         action={
           <button
             type="button"
-            onClick={() => setPublished(true)}
+            onClick={publishPreview}
+            disabled={isPublishing}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
           >
-            <CalendarPlus size={17} />
-            Publish preview
+            {isPublishing ? (
+              <>
+                <span className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                Publishing...
+              </>
+            ) : (
+              <>
+                <CalendarPlus size={17} />
+                Publish preview
+              </>
+            )}
           </button>
         }
       />

@@ -15,6 +15,8 @@ export type ApplicationStatus =
   | 'Draft'
   | 'Submitted'
   | 'Accepted'
+  | 'Rejected'
+  | 'Cancelled'
   | 'Waitlisted'
   | 'Completed'
 
@@ -113,6 +115,28 @@ export type DashboardStat = {
 }
 
 export type OrganizerMetric = {
+  id: string
+  label: string
+  value: string
+  helper: string
+}
+
+export type UserRole = 'admin' | 'organizer' | 'volunteer'
+
+export type UserStatus = 'Active' | 'Inactive' | 'Suspended'
+
+export type PlatformUser = {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  status: UserStatus
+  city: string
+  joinedAt: string
+  avatarInitials: string
+}
+
+export type AdminStat = {
   id: string
   label: string
   value: string

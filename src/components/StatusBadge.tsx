@@ -13,6 +13,8 @@ const statusLabel: Record<EventStatus | ApplicationStatus, string> = {
   Draft: 'Draft',
   Submitted: 'Terkirim',
   Accepted: 'Diterima',
+  Rejected: 'Ditolak',
+  Cancelled: 'Batal',
   Waitlisted: 'Waiting list',
   Completed: 'Selesai',
 }
@@ -24,6 +26,8 @@ const statusClassName: Record<EventStatus | ApplicationStatus, string> = {
   Draft: 'border-muted bg-muted text-muted-foreground',
   Submitted: 'border-info/25 bg-info/10 text-info',
   Accepted: 'border-primary/25 bg-primary/10 text-primary',
+  Rejected: 'border-destructive/25 bg-destructive/10 text-destructive',
+  Cancelled: 'border-muted bg-muted text-muted-foreground',
   Waitlisted: 'border-warning/25 bg-warning/10 text-warning',
   Completed: 'border-deep-green/25 bg-deep-green/10 text-deep-green',
 }

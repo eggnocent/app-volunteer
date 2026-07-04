@@ -6,6 +6,7 @@ export * from '@/data/categories'
 export * from '@/data/events'
 export * from '@/data/organizers'
 export * from '@/data/profile'
+export * from '@/data/admin'
 
 export const featuredEvents = events.filter((event) => event.featured)
 

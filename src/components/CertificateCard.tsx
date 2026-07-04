@@ -6,13 +6,14 @@ import type { Certificate } from '@/types/migunani'
 
 type CertificateCardProps = {
   certificate: Certificate
+  onPreview: (certificate: Certificate) => void
 }
 
-export function CertificateCard({ certificate }: CertificateCardProps) {
+export function CertificateCard({ certificate, onPreview }: CertificateCardProps) {
   const event = getEventById(certificate.eventId)
 
   return (
-    <article className="overflow-hidden rounded-lg border bg-card shadow-sm">
+    <article className="overflow-hidden rounded-lg border bg-card shadow-sm transition hover:shadow-md">
       <div className="bg-deep-green p-5 text-primary-foreground">
         <div className="flex items-start justify-between gap-4">
           <span className="flex size-11 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
@@ -44,7 +45,8 @@ export function CertificateCard({ certificate }: CertificateCardProps) {
           </span>
           <button
             type="button"
-            className="inline-flex size-10 items-center justify-center rounded-md border bg-card text-foreground transition hover:bg-muted"
+            onClick={() => onPreview(certificate)}
+            className="inline-flex size-10 items-center justify-center rounded-md border bg-card text-foreground transition hover:bg-primary hover:text-primary-foreground"
             aria-label="Download sertifikat"
           >
             <Download size={17} />

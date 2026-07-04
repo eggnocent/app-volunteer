@@ -1,4 +1,4 @@
-import { ArrowRight, LogIn, Search } from 'lucide-react'
+import { ArrowRight, LogIn, Search, UserPlus } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 import { Logo } from '@/layouts/Logo'
@@ -43,10 +43,17 @@ export function SiteHeader() {
           </NavLink>
           <NavLink
             to="/login"
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-deep-green"
+            className="inline-flex h-10 items-center gap-2 rounded-md border bg-card px-3 text-sm font-semibold text-foreground shadow-sm transition hover:bg-muted"
           >
             <LogIn size={16} />
             Masuk
+          </NavLink>
+          <NavLink
+            to="/register"
+            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-deep-green"
+          >
+            <UserPlus size={16} />
+            Daftar
             <ArrowRight size={16} />
           </NavLink>
         </div>

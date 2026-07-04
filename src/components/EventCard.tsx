@@ -14,6 +14,8 @@ type EventCardProps = {
   onSavedChange?: (eventId: string) => void
   detailPathPrefix?: string
   variant?: 'grid' | 'list' | 'compact'
+  matchScore?: number
+  matchReasons?: string[]
   className?: string
 }
 
@@ -24,6 +26,8 @@ export function EventCard({
   onSavedChange,
   detailPathPrefix = '/events',
   variant = 'grid',
+  matchScore,
+  matchReasons = [],
   className,
 }: EventCardProps) {
   const fill = getFillPercentage(event.registered, event.quota)
@@ -56,6 +60,11 @@ export function EventCard({
           {event.featured ? (
             <span className="rounded-full border border-secondary/70 bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground">
               Featured
+            </span>
+          ) : null}
+          {typeof matchScore === 'number' ? (
+            <span className="rounded-full border border-white/20 bg-card/95 px-2.5 py-1 text-xs font-bold text-primary shadow-sm backdrop-blur">
+              Cocok {matchScore}%
             </span>
           ) : null}
         </div>
@@ -97,6 +106,18 @@ export function EventCard({
         </div>
 
         <div className="mt-auto space-y-3">
+          {matchReasons.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {matchReasons.map((reason) => (
+                <span
+                  key={reason}
+                  className="rounded-full bg-accent px-2.5 py-1 text-xs font-bold text-accent-foreground"
+                >
+                  {reason}
+                </span>
+              ))}
+            </div>
+          ) : null}
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-primary"

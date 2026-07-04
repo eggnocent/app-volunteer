@@ -112,3 +112,25 @@ h6 {
 #root {
   min-height: 100svh;
 }
+
+@keyframes route-progress {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  18% {
+    opacity: 1;
+    transform: scaleX(0.42);
+  }
+
+  72% {
+    opacity: 1;
+    transform: scaleX(0.86);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}

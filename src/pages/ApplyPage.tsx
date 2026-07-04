@@ -73,6 +73,7 @@ export function ApplyPage() {
     'Bisa ikut briefing online',
   ])
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const canContinue = useMemo(() => {
     if (currentStep === 0) {
@@ -114,7 +115,11 @@ export function ApplyPage() {
       return
     }
 
-    setSubmitted(true)
+    setIsSubmitting(true)
+    setTimeout(() => {
+      setIsSubmitting(false)
+      setSubmitted(true)
+    }, 1100)
   }
 
   function goBack() {
@@ -226,14 +231,24 @@ export function ApplyPage() {
             <button
               type="button"
               onClick={goNext}
-              disabled={!canContinue}
+              disabled={!canContinue || isSubmitting}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {currentStep === registrationSteps.length - 1 ? 'Kirim aplikasi' : 'Lanjut'}
-              {currentStep === registrationSteps.length - 1 ? (
-                <Send size={17} />
+              {isSubmitting ? (
+                <>
+                  <span className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                  Mengirim...
+                </>
+              ) : currentStep === registrationSteps.length - 1 ? (
+                <>
+                  Kirim aplikasi
+                  <Send size={17} />
+                </>
               ) : (
-                <ArrowRight size={17} />
+                <>
+                  Lanjut
+                  <ArrowRight size={17} />
+                </>
               )}
             </button>
           </div>
