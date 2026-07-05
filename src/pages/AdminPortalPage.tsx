@@ -52,13 +52,13 @@ export function AdminPortalPage() {
           </p>
           <div className="mt-8 space-y-3">
             <Link
-              to="/login"
+              to="/?next=%2Fvolunteer%2Fdashboard"
               className="flex items-center gap-2 text-sm font-semibold text-primary-foreground/60 transition hover:text-primary-foreground"
             >
               Masuk sebagai Relawan →
             </Link>
             <Link
-              to="/organizer"
+              to="/?next=%2Forganizer%2Fdashboard"
               className="flex items-center gap-2 text-sm font-semibold text-primary-foreground/60 transition hover:text-primary-foreground"
             >
               Masuk sebagai Organizer →

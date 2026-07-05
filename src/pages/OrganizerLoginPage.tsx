@@ -52,13 +52,13 @@ export function OrganizerLoginPage() {
           </p>
           <div className="mt-8 space-y-3">
             <Link
-              to="/login"
+              to="/?next=%2Fvolunteer%2Fdashboard"
               className="flex items-center gap-2 text-sm font-semibold text-primary-foreground/60 transition hover:text-primary-foreground"
             >
               Masuk sebagai Relawan →
             </Link>
             <Link
-              to="/portal"
+              to="/?next=%2Fportal%2Fdashboard"
               className="flex items-center gap-2 text-sm font-semibold text-primary-foreground/60 transition hover:text-primary-foreground"
             >
               Masuk sebagai Super Admin →

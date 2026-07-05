@@ -77,7 +77,11 @@ export function RegisterPage({ role }: RegisterPageProps) {
       : isOrganizer
         ? '/organizer/dashboard'
         : '/volunteer/dashboard'
-  const loginHref = isOrganizer ? '/organizer' : '/login'
+  const loginHref = isOrganizer
+    ? '/?next=%2Forganizer%2Fdashboard'
+    : nextParam?.startsWith('/volunteer/')
+      ? `/?next=${encodeURIComponent(nextParam)}`
+      : '/'
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, HeartHandshake, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Building2, HeartHandshake } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
@@ -14,13 +14,16 @@ export function LoginPage() {
   const [password, setPassword] = useState('prototype123')
   const [loginError, setLoginError] = useState<string | null>(null)
   const nextParam = searchParams.get('next')
-  const nextHref = nextParam?.startsWith('/volunteer/')
-    ? nextParam
-    : '/volunteer/dashboard'
-  const registerHref =
-    nextHref === '/volunteer/dashboard'
+  const nextHref = getSafeNextHref(nextParam)
+  const registerHref = nextHref.startsWith('/organizer/')
+    ? '/organizer/register'
+    : nextHref === '/volunteer/dashboard'
       ? '/register'
       : `/register?next=${encodeURIComponent(nextHref)}`
+  const registerLabel = nextHref.startsWith('/organizer/')
+    ? 'Belum punya akun organizer?'
+    : 'Belum punya akun relawan?'
+  const canRegister = !nextHref.startsWith('/portal/')
   const isSubmitting = status === 'loading'
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -29,7 +32,7 @@ export function LoginPage() {
 
     try {
       const user = await login({ email, password })
-      navigate(user.role === 'volunteer' ? nextHref : getRoleHome(user.role), {
+      navigate(isNextAllowedForRole(nextHref, user.role) ? nextHref : getRoleHome(user.role), {
         replace: true,
       })
     } catch (error) {
@@ -45,29 +48,29 @@ export function LoginPage() {
             M
           </span>
           <p className="mt-8 text-sm font-bold uppercase text-primary-foreground/70">
-            Login Relawan
+            Login Migunani
           </p>
           <h1 className="mt-3 font-heading text-4xl font-extrabold leading-tight sm:text-5xl">
-            Masuk sebagai relawan Migunani.
+            Masuk sekali, dashboard mengikuti role akun.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-8 text-primary-foreground/78">
-            Akses dashboard relawan untuk menjelajahi event, mendaftar kegiatan,
-            memantau aplikasi, dan mengumpulkan sertifikat kontribusi.
+            Backend memvalidasi akun dan mengembalikan role. Setelah login,
+            relawan, organizer, atau admin diarahkan ke workspace masing-masing.
           </p>
           <div className="mt-8 space-y-3">
             <Link
-              to="/organizer"
+              to="/home"
+              className="flex items-center gap-2 text-sm font-semibold text-primary-foreground/60 transition hover:text-primary-foreground"
+            >
+              <HeartHandshake size={14} />
+              Lihat discover page →
+            </Link>
+            <Link
+              to="/organizer/register"
               className="flex items-center gap-2 text-sm font-semibold text-primary-foreground/60 transition hover:text-primary-foreground"
             >
               <Building2 size={14} />
-              Masuk sebagai Organizer →
-            </Link>
-            <Link
-              to="/portal"
-              className="flex items-center gap-2 text-sm font-semibold text-primary-foreground/60 transition hover:text-primary-foreground"
-            >
-              <ShieldCheck size={14} />
-              Masuk sebagai Super Admin →
+              Daftar organizer →
             </Link>
           </div>
         </div>
@@ -80,10 +83,10 @@ export function LoginPage() {
             <span className="flex size-14 items-center justify-center rounded-md bg-accent text-accent-foreground">
               <HeartHandshake size={28} />
             </span>
-            <h2 className="mt-6 font-heading text-3xl font-extrabold">Relawan</h2>
+            <h2 className="mt-6 font-heading text-3xl font-extrabold">Login Akun</h2>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              Cari event volunteer, daftar kegiatan sosial, pantau status aplikasi,
-              dan kumpulkan sertifikat kontribusi untuk portofolio keaktifanmu.
+              Gunakan email dan password akun Migunani. Role akun akan menentukan
+              dashboard tujuan setelah sesi berhasil dibuat.
             </p>
 
             <div className="mt-8 space-y-4">
@@ -92,7 +95,7 @@ export function LoginPage() {
                 <input
                   required
                   type="email"
-                  placeholder="relawan@migunani.id"
+                  placeholder="nama@migunani.id"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   className="mt-1.5 h-11 w-full rounded-md border bg-background px-3 text-sm font-semibold outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
@@ -125,22 +128,24 @@ export function LoginPage() {
               {isSubmitting
                 ? 'Memproses...'
                 : nextHref === '/volunteer/dashboard'
-                ? 'Masuk sebagai Relawan'
-                : 'Masuk dan lanjut daftar event'}
+                  ? 'Masuk ke Migunani'
+                  : 'Masuk dan lanjutkan'}
               <ArrowRight size={17} />
             </button>
             <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">
               Login memakai endpoint backend dan sesi Sanctum.
             </p>
-            <p className="mt-3 text-center text-xs font-semibold text-muted-foreground">
-              Belum punya akun relawan?{' '}
-              <Link
-                to={registerHref}
-                className="text-primary transition hover:text-deep-green"
-              >
-                Daftar di sini
-              </Link>
-            </p>
+            {canRegister ? (
+              <p className="mt-3 text-center text-xs font-semibold text-muted-foreground">
+                {registerLabel}{' '}
+                <Link
+                  to={registerHref}
+                  className="text-primary transition hover:text-deep-green"
+                >
+                  Daftar di sini
+                </Link>
+              </p>
+            ) : null}
           </form>
         </div>
       </section>
@@ -158,6 +163,30 @@ function getRoleHome(role: UserRole) {
   }
 
   return '/volunteer/dashboard'
+}
+
+function getSafeNextHref(nextParam: string | null) {
+  if (
+    nextParam?.startsWith('/volunteer/') ||
+    nextParam?.startsWith('/organizer/') ||
+    nextParam?.startsWith('/portal/')
+  ) {
+    return nextParam
+  }
+
+  return '/volunteer/dashboard'
+}
+
+function isNextAllowedForRole(nextHref: string, role: UserRole) {
+  if (role === 'admin') {
+    return nextHref.startsWith('/portal/')
+  }
+
+  if (role === 'organizer') {
+    return nextHref.startsWith('/organizer/')
+  }
+
+  return nextHref.startsWith('/volunteer/')
 }
 
 function getErrorMessage(error: unknown) {

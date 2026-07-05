@@ -5,7 +5,7 @@ import { Logo } from '@/layouts/Logo'
 import { cn } from '@/lib/utils'
 
 const publicNavItems = [
-  { label: 'Discover', to: '/' },
+  { label: 'Discover', to: '/home' },
   { label: 'Explore Events', to: '/events' },
 ]
 
@@ -42,7 +42,7 @@ export function SiteHeader() {
             Cari event
           </NavLink>
           <NavLink
-            to="/login"
+            to="/"
             className="inline-flex h-10 items-center gap-2 rounded-md border bg-card px-3 text-sm font-semibold text-foreground shadow-sm transition hover:bg-muted"
           >
             <LogIn size={16} />
@@ -59,7 +59,7 @@ export function SiteHeader() {
         </div>
 
         <NavLink
-          to="/login"
+          to="/"
           className="inline-flex size-10 items-center justify-center rounded-md border bg-card text-foreground shadow-sm md:hidden"
           aria-label="Open login"
         >

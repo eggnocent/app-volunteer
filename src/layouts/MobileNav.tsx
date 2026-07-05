@@ -28,9 +28,9 @@ type MobileNavItem = {
 }
 
 const publicItems: MobileNavItem[] = [
-  { label: 'Home', to: '/', icon: Home },
+  { label: 'Home', to: '/home', icon: Home },
   { label: 'Explore', to: '/events', icon: Search },
-  { label: 'Masuk', to: '/login', icon: LogIn },
+  { label: 'Masuk', to: '/', icon: LogIn },
   { label: 'Daftar', to: '/register', icon: UserPlus },
 ]
 

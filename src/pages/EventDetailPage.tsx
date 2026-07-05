@@ -86,7 +86,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
   const isOrganizerView = viewer === 'organizer'
   const applyHref = isVolunteerView
     ? `/volunteer/apply/${event.id}`
-    : `/login?next=${encodeURIComponent(`/volunteer/apply/${event.id}`)}`
+    : `/?next=${encodeURIComponent(`/volunteer/apply/${event.id}`)}`
   const backHref = isVolunteerView
     ? '/volunteer/dashboard'
     : isOrganizerView

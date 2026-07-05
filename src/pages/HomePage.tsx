@@ -131,7 +131,7 @@ export function HomePage() {
                 sertifikat, dan impact summary.
               </p>
               <Link
-                to="/login"
+                to="/?next=%2Fvolunteer%2Fdashboard"
                 className="mt-5 inline-flex items-center gap-2 text-sm font-bold"
               >
                 Masuk sebagai relawan
@@ -153,7 +153,7 @@ export function HomePage() {
                 </span>
               </div>
               <Link
-                to="/organizer"
+                to="/?next=%2Forganizer%2Fdashboard"
                 className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary"
               >
                 Masuk sebagai organizer

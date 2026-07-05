@@ -27,7 +27,8 @@ export function AppRoutes() {
     <Routes>
       {/* Public pages */}
       <Route element={<AppLayout />}>
-        <Route index element={<HomePage />} />
+        <Route index element={<LoginPage />} />
+        <Route path="home" element={<HomePage />} />
         <Route path="events" element={<EventsPage />} />
         <Route path="events/:slug" element={<EventDetailPage />} />
         <Route path="login" element={<LoginPage />} />
@@ -43,7 +44,7 @@ export function AppRoutes() {
       {/* Super Admin area — /portal/* */}
       <Route
         element={
-          <ProtectedRoute roles={['admin']} loginPath="/portal">
+          <ProtectedRoute roles={['admin']} loginPath="/">
             <DashboardLayout area="admin" />
           </ProtectedRoute>
         }
@@ -57,7 +58,7 @@ export function AppRoutes() {
       {/* Volunteer area — /volunteer/* */}
       <Route
         element={
-          <ProtectedRoute roles={['volunteer']} loginPath="/login">
+          <ProtectedRoute roles={['volunteer']} loginPath="/">
             <DashboardLayout area="volunteer" />
           </ProtectedRoute>
         }
@@ -74,7 +75,7 @@ export function AppRoutes() {
       {/* Organizer area — /organizer/* */}
       <Route
         element={
-          <ProtectedRoute roles={['organizer']} loginPath="/organizer">
+          <ProtectedRoute roles={['organizer']} loginPath="/">
             <DashboardLayout area="organizer" />
           </ProtectedRoute>
         }
