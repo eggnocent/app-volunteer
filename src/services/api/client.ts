@@ -2,8 +2,7 @@ import type { ApiErrorPayload } from '@/services/api/types'
 
 const DEFAULT_API_BASE_URL = 'https://api.wishmeluck.web.id'
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? DEFAULT_API_BASE_URL
+export const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
 
 export const API_MODE = import.meta.env.VITE_API_MODE ?? 'fallback'
 
@@ -72,7 +71,25 @@ export function toApiUrl(path: string) {
     return path
   }
 
+  if (!API_BASE_URL) {
+    return path.startsWith('/') ? path : `/${path}`
+  }
+
   return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+}
+
+function normalizeApiBaseUrl(value: string | undefined) {
+  if (value === undefined) {
+    return DEFAULT_API_BASE_URL
+  }
+
+  const normalizedValue = value.trim()
+
+  if (!normalizedValue || normalizedValue === '/') {
+    return ''
+  }
+
+  return normalizedValue.replace(/\/$/, '')
 }
 
 function requiresCsrf(method: string) {

@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://api.wishmeluck.web.id/api/:path*"
+    },
+    {
+      "source": "/sanctum/:path*",
+      "destination": "https://api.wishmeluck.web.id/sanctum/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
