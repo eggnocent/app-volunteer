@@ -80,6 +80,10 @@ export function toApiUrl(path: string) {
 
 function normalizeApiBaseUrl(value: string | undefined) {
   if (value === undefined) {
+    if (isVercelAppHost()) {
+      return ''
+    }
+
     return DEFAULT_API_BASE_URL
   }
 
@@ -90,6 +94,13 @@ function normalizeApiBaseUrl(value: string | undefined) {
   }
 
   return normalizedValue.replace(/\/$/, '')
+}
+
+function isVercelAppHost() {
+  return (
+    typeof window !== 'undefined' &&
+    window.location.hostname.endsWith('.vercel.app')
+  )
 }
 
 function requiresCsrf(method: string) {
