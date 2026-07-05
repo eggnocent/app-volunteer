@@ -10,7 +10,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { login, status } = useAuth()
-  const [email, setEmail] = useState('nadira.putri@mail.com')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('prototype123')
   const [loginError, setLoginError] = useState<string | null>(null)
   const nextParam = searchParams.get('next')
