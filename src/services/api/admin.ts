@@ -30,13 +30,10 @@ export async function getAdminOrganizers() {
 
 export async function updateUserStatus(userId: string, status: UserStatus) {
   return unwrapData(
-    await apiRequest<ApiEnvelope<PlatformUser>>(
-      `/api/admin/users/${toAdminUserRouteId(userId)}/status`,
-      {
-        method: 'PATCH',
-        body: { status },
-      },
-    ),
+    await apiRequest<ApiEnvelope<PlatformUser>>(`/api/admin/users/${userId}/status`, {
+      method: 'PATCH',
+      body: { status },
+    }),
   )
 }
 
@@ -62,8 +59,4 @@ export async function updateEventStatus(eventId: string, status: EventStatus) {
       body: { status },
     }),
   )
-}
-
-function toAdminUserRouteId(userId: string) {
-  return userId.match(/^usr-\d+$/) ? userId.replace('usr-', '') : userId
 }
