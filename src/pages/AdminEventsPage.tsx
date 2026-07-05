@@ -4,7 +4,7 @@ import {
   Lock,
   Search,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import {
   OrganizerEventRow,
@@ -12,20 +12,33 @@ import {
   StatsCard,
 } from '@/components'
 import { events } from '@/data'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
+import { adminApi, mapEvent } from '@/services/api'
 import type { EventCategory, EventStatus } from '@/types/migunani'
 
 type CategoryFilter = EventCategory | 'Semua'
 type StatusFilterType = EventStatus | 'Semua'
 
 export function AdminEventsPage() {
+  const loadEvents = useCallback(async () => {
+    return (await adminApi.getAdminEvents()).map(mapEvent)
+  }, [])
+  const {
+    data: adminEvents,
+    error: eventsError,
+    isLoading,
+    reload,
+  } = useAsyncResource(loadEvents, events)
+  const [eventOverrides, setEventOverrides] = useState<typeof events>([])
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('Semua')
   const [statusFilter, setStatusFilter] = useState<StatusFilterType>('Semua')
+  const visibleEvents = getVisibleEvents(adminEvents, eventOverrides)
 
   const filteredEvents = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
 
-    return events.filter((event) => {
+    return visibleEvents.filter((event) => {
       const matchesCategory =
         categoryFilter === 'Semua' || event.category === categoryFilter
       const matchesStatus =
@@ -40,11 +53,30 @@ export function AdminEventsPage() {
 
       return matchesCategory && matchesStatus && matchesQuery
     })
-  }, [query, categoryFilter, statusFilter])
+  }, [categoryFilter, query, statusFilter, visibleEvents])
 
-  const openCount = events.filter((e) => e.status === 'Open').length
-  const nearlyFullCount = events.filter((e) => e.status === 'Nearly Full').length
-  const closedCount = events.filter((e) => e.status === 'Closed').length
+  const openCount = visibleEvents.filter((e) => e.status === 'Open').length
+  const nearlyFullCount = visibleEvents.filter((e) => e.status === 'Nearly Full').length
+  const closedCount = visibleEvents.filter((e) => e.status === 'Closed').length
+
+  async function updateStatus(eventId: string, status: EventStatus) {
+    const previousOverrides = eventOverrides
+    const baseEvent = visibleEvents.find((event) => event.id === eventId)
+
+    if (!baseEvent) {
+      return
+    }
+
+    setEventOverrides((current) => upsertEvent(current, { ...baseEvent, status }))
+
+    try {
+      const updatedEvent = mapEvent(await adminApi.updateEventStatus(eventId, status))
+      setEventOverrides((current) => upsertEvent(current, updatedEvent))
+      void reload()
+    } catch {
+      setEventOverrides(previousOverrides)
+    }
+  }
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
@@ -53,6 +85,16 @@ export function AdminEventsPage() {
         title="Kelola semua event di platform."
         description="Pantau, review, dan kelola seluruh event volunteer yang dipublikasikan oleh organizer di Migunani."
       />
+
+      {isLoading ? (
+        <ApiNotice message="Memuat event admin dari API..." tone="loading" />
+      ) : null}
+      {eventsError ? (
+        <ApiNotice
+          message={`Data API belum tersedia, memakai event tampilan sementara. ${eventsError}`}
+          tone="error"
+        />
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
         <StatsCard
@@ -121,16 +163,25 @@ export function AdminEventsPage() {
 
       <p className="text-sm font-semibold text-muted-foreground">
         Menampilkan <span className="text-foreground">{filteredEvents.length}</span>{' '}
-        dari {events.length} event
+        dari {visibleEvents.length} event
       </p>
 
       <section className="grid gap-4">
         {filteredEvents.map((event) => (
-          <OrganizerEventRow
-            key={event.id}
-            event={event}
-            detailPathPrefix="/portal/events"
-          />
+          <div key={event.id} className="space-y-2">
+            <OrganizerEventRow event={event} detailPathPrefix="/portal/events" />
+            <select
+              value={event.status}
+              onChange={(selectEvent) =>
+                void updateStatus(event.id, selectEvent.target.value as EventStatus)
+              }
+              className="h-10 w-fit rounded-md border bg-background px-3 text-xs font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+            >
+              <option value="Open">Open</option>
+              <option value="Nearly Full">Nearly Full</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
         ))}
       </section>
 
@@ -142,6 +193,46 @@ export function AdminEventsPage() {
           </p>
         </section>
       ) : null}
+    </div>
+  )
+}
+
+function getVisibleEvents(
+  adminEvents: typeof events,
+  overrides: typeof events,
+) {
+  const overrideMap = new Map(overrides.map((event) => [event.id, event]))
+
+  return adminEvents.map((event) => overrideMap.get(event.id) ?? event)
+}
+
+function upsertEvent(
+  currentEvents: typeof events,
+  nextEvent: (typeof events)[number],
+) {
+  const hasEvent = currentEvents.some((event) => event.id === nextEvent.id)
+
+  return hasEvent
+    ? currentEvents.map((event) => (event.id === nextEvent.id ? nextEvent : event))
+    : [...currentEvents, nextEvent]
+}
+
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={
+        tone === 'loading'
+          ? 'rounded-lg border bg-accent p-3 text-sm font-semibold text-accent-foreground'
+          : 'rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive'
+      }
+    >
+      {message}
     </div>
   )
 }

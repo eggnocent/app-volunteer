@@ -9,10 +9,11 @@ import {
   LogOut,
   Users,
 } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { Logo } from '@/layouts/Logo'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/providers/useAuth'
 
 const volunteerItems = [
   { label: 'Dashboard Saya', to: '/volunteer/dashboard', icon: LayoutDashboard },
@@ -32,6 +33,7 @@ const volunteerItems = [
 const organizerItems = [
   { label: 'Dashboard', to: '/organizer/dashboard', icon: BarChart3 },
   { label: 'Applicants', to: '/organizer/applicants', icon: ListChecks },
+  { label: 'Certificates', to: '/organizer/certificates', icon: BadgeCheck },
   { label: 'Explore Events', to: '/organizer/events', icon: Home },
   { label: 'Create Event', to: '/organizer/create', icon: CalendarPlus },
 ]
@@ -48,6 +50,8 @@ type DashboardSidebarProps = {
 }
 
 export function DashboardSidebar({ area }: DashboardSidebarProps) {
+  const navigate = useNavigate()
+  const { logout, status } = useAuth()
   const items =
     area === 'admin'
       ? adminItems
@@ -62,13 +66,21 @@ export function DashboardSidebar({ area }: DashboardSidebarProps) {
       <div className="mt-8 space-y-6">
         <SidebarGroup label={area === 'admin' ? 'Super Admin' : area === 'volunteer' ? 'Volunteer' : 'Organizer'} items={items} />
       </div>
-      <Link
-        to="/"
-        className="mt-auto flex items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+      <button
+        type="button"
+        disabled={status === 'loading'}
+        onClick={async () => {
+          try {
+            await logout()
+          } finally {
+            navigate('/', { replace: true })
+          }
+        }}
+        className="mt-auto flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-semibold text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
       >
         <LogOut size={17} />
         Keluar
-      </Link>
+      </button>
     </aside>
   )
 }

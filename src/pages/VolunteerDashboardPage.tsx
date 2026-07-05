@@ -16,7 +16,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useState, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import {
   CategoryChip,
@@ -27,16 +27,26 @@ import {
   StatusBadge,
 } from '@/components'
 import {
+  mapApplication,
+  mapCertificate,
+  mapEvent,
+  toApiUrl,
+  volunteerApi,
+  type ApiVolunteerDashboard,
+  type ApiEvent,
+} from '@/services/api'
+import {
   certificates,
   events,
-  getEventById,
   getOrganizerById,
   volunteerApplications as initialApplications,
   volunteerProfile,
 } from '@/data'
 import { formatDate } from '@/lib/format'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getEventMatch } from '@/lib/match'
 import { cn } from '@/lib/utils'
+import type { Certificate, VolunteerApplication, VolunteerEvent, VolunteerProfile } from '@/types/migunani'
 
 type DashboardTab = 'overview' | 'applications' | 'certificates'
 
@@ -56,48 +66,137 @@ const statTones = ['green', 'yellow', 'dark', 'neutral'] as const
 export function VolunteerDashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = getActiveTab(searchParams.get('tab'))
+  const initialDashboard = useMemo(
+    () => ({
+      profile: volunteerProfile,
+      applications: initialApplications,
+      certificates,
+      savedEvents: events.filter((event) =>
+        volunteerProfile.savedEventIds.includes(event.id),
+      ),
+      eventLookup: events,
+    }),
+    [],
+  )
+  const loadDashboard = useCallback(async () => {
+    const aggregate = await volunteerApi.getVolunteerDashboard()
+    const [profileResult, applicationsResult, savedEventsResult, certificatesResult] =
+      await Promise.allSettled([
+        volunteerApi.getProfile(),
+        volunteerApi.getVolunteerApplications(),
+        volunteerApi.getSavedEvents(),
+        volunteerApi.getVolunteerCertificates(),
+      ])
+
+    return mapVolunteerDashboardResource({
+      ...aggregate,
+      profile:
+        profileResult.status === 'fulfilled'
+          ? profileResult.value
+          : aggregate.profile,
+      applications:
+        applicationsResult.status === 'fulfilled'
+          ? applicationsResult.value
+          : aggregate.applications,
+      savedEvents:
+        savedEventsResult.status === 'fulfilled'
+          ? savedEventsResult.value
+          : aggregate.savedEvents,
+      certificates:
+        certificatesResult.status === 'fulfilled'
+          ? certificatesResult.value
+          : aggregate.certificates,
+    })
+  }, [])
+  const {
+    data: dashboard,
+    error: dashboardError,
+    isLoading,
+    reload,
+  } = useAsyncResource(loadDashboard, initialDashboard)
 
   // State management for interactive features
-  const [savedEventIds, setSavedEventIds] = useState<string[]>(volunteerProfile.savedEventIds)
-  const [applications, setApplications] = useState(initialApplications)
-  const [selectedCert, setSelectedCert] = useState<typeof certificates[0] | null>(null)
+  const [optimisticSavedIds, setOptimisticSavedIds] = useState<string[]>([])
+  const [removedSavedIds, setRemovedSavedIds] = useState<string[]>([])
+  const [applications, setApplications] = useState<VolunteerApplication[] | null>(null)
+  const [selectedCert, setSelectedCert] = useState<Certificate | null>(null)
   
   // Simulation states
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadSuccess, setDownloadSuccess] = useState(false)
   const [appToCancel, setAppToCancel] = useState<string | null>(null)
 
+  const visibleApplications = applications ?? dashboard.applications
+  const visibleSavedEvents = useMemo(() => {
+    const savedByApi = dashboard.savedEvents.filter(
+      (event) => !removedSavedIds.includes(event.id),
+    )
+    const savedIds = new Set(savedByApi.map((event) => event.id))
+    const optimisticEvents = dashboard.eventLookup.filter(
+      (event) => optimisticSavedIds.includes(event.id) && !savedIds.has(event.id),
+    )
+
+    return [...savedByApi, ...optimisticEvents]
+  }, [dashboard.eventLookup, dashboard.savedEvents, optimisticSavedIds, removedSavedIds])
   const activeApplications = useMemo(() => {
-    return applications.filter(
+    return visibleApplications.filter(
       (application) => application.status !== 'Completed' && application.status !== 'Cancelled'
     )
-  }, [applications])
-
-  const savedEvents = useMemo(() => {
-    return events.filter((event) => savedEventIds.includes(event.id))
-  }, [savedEventIds])
+  }, [visibleApplications])
 
   function setActiveTab(tab: DashboardTab) {
     setSearchParams(tab === 'overview' ? {} : { tab })
   }
 
   // Handle removing bookmark
-  const handleRemoveBookmark = (eventId: string) => {
-    setSavedEventIds((prev) => prev.filter((id) => id !== eventId))
+  const handleRemoveBookmark = async (eventId: string) => {
+    setRemovedSavedIds((prev) => (prev.includes(eventId) ? prev : [...prev, eventId]))
+    setOptimisticSavedIds((prev) => prev.filter((id) => id !== eventId))
+
+    try {
+      await volunteerApi.removeSavedEvent(eventId)
+      void reload()
+    } catch {
+      setRemovedSavedIds((prev) => prev.filter((id) => id !== eventId))
+    }
   }
 
   // Handle cancel application
   const handleCancelApplication = (appId: string) => {
-    setApplications((prev) =>
-      prev.map((app) =>
-        app.id === appId ? { ...app, status: 'Cancelled' } : app
-      )
+    const previousApplications = visibleApplications
+    setApplications(
+      previousApplications.map((app) =>
+        app.id === appId ? { ...app, status: 'Cancelled' } : app,
+      ),
     )
     setAppToCancel(null)
+
+    void volunteerApi
+      .cancelVolunteerApplication(appId)
+      .then((application) => {
+        const updatedApplication = mapApplication(application)
+        setApplications((current) =>
+          (current ?? previousApplications).map((app) =>
+            app.id === updatedApplication.id ? updatedApplication : app,
+          ),
+        )
+        void reload()
+      })
+      .catch(() => {
+        setApplications(previousApplications)
+      })
   }
 
   // Handle download simulation
   const triggerDownload = () => {
+    if (selectedCert) {
+      window.open(
+        toApiUrl(volunteerApi.getVolunteerCertificateDownloadUrl(selectedCert.id)),
+        '_blank',
+        'noopener,noreferrer',
+      )
+    }
+
     setIsDownloading(true)
     setDownloadSuccess(false)
     setTimeout(() => {
@@ -109,9 +208,9 @@ export function VolunteerDashboardPage() {
 
   // Dynamic values for Stats
   const dynamicStats = useMemo(() => {
-    const totalHours = volunteerProfile.totalHours
-    const completedCount = applications.filter((app) => app.status === 'Completed').length
-    const certificatesCount = certificates.length
+    const totalHours = dashboard.profile.totalHours
+    const completedCount = visibleApplications.filter((app) => app.status === 'Completed').length
+    const certificatesCount = dashboard.certificates.length
     const activeCount = activeApplications.length
 
     return [
@@ -120,10 +219,10 @@ export function VolunteerDashboardPage() {
       { id: '3', label: 'Sertifikat', value: `${certificatesCount} file`, delta: 'siap diunduh' },
       { id: '4', label: 'Aplikasi berjalan', value: `${activeCount} aplikasi`, delta: 'menunggu review' },
     ]
-  }, [applications, activeApplications])
+  }, [activeApplications.length, dashboard.certificates.length, dashboard.profile.totalHours, visibleApplications])
 
   // Volunteer Level Progress based on hours
-  const currentHours = volunteerProfile.totalHours
+  const currentHours = dashboard.profile.totalHours
   const nextLevelHours = 100
   const progressPercent = Math.min((currentHours / nextLevelHours) * 100, 100)
 
@@ -131,7 +230,7 @@ export function VolunteerDashboardPage() {
     <div className="space-y-6 pb-20 lg:pb-0">
       <PageHeader
         eyebrow="Volunteer Dashboard"
-        title={`Halo, ${volunteerProfile.name}.`}
+        title={`Halo, ${dashboard.profile.name}.`}
         description="Pantau aplikasi event, jam kontribusi, sertifikat, dan ringkasan impact untuk portofolio keaktifanmu."
         className="border-0 bg-transparent p-0 shadow-none"
         action={
@@ -143,6 +242,16 @@ export function VolunteerDashboardPage() {
           </Link>
         }
       />
+
+      {isLoading ? (
+        <ApiNotice tone="loading" message="Memuat data volunteer dari API..." />
+      ) : null}
+      {dashboardError ? (
+        <ApiNotice
+          tone="error"
+          message={`Data API belum tersedia, memakai data tampilan sementara. ${dashboardError}`}
+        />
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -165,12 +274,12 @@ export function VolunteerDashboardPage() {
           </div>
           <div className="flex items-center gap-4">
             <span className="flex size-14 items-center justify-center rounded-md bg-secondary font-heading text-xl font-extrabold text-secondary-foreground shadow-inner">
-              {volunteerProfile.name.charAt(0)}
+              {dashboard.profile.name.charAt(0)}
             </span>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-heading text-lg font-extrabold">
-                  {volunteerProfile.name}
+                  {dashboard.profile.name}
                 </h2>
                 <span className="inline-flex items-center gap-1 rounded bg-secondary/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-secondary">
                   <Sparkles size={10} />
@@ -178,7 +287,7 @@ export function VolunteerDashboardPage() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-primary-foreground/75">
-                {volunteerProfile.major} · {volunteerProfile.university}
+                {dashboard.profile.major} · {dashboard.profile.university}
               </p>
             </div>
           </div>
@@ -222,20 +331,26 @@ export function VolunteerDashboardPage() {
       {activeTab === 'overview' ? (
         <OverviewTab
           activeApplications={activeApplications.length}
-          savedEvents={savedEvents}
+          savedEvents={visibleSavedEvents}
+          profile={dashboard.profile}
+          certificatesCount={dashboard.certificates.length}
           onRemoveBookmark={handleRemoveBookmark}
         />
       ) : null}
 
       {activeTab === 'applications' ? (
         <ApplicationsTab
-          applications={applications}
+          applications={visibleApplications}
+          eventLookup={dashboard.eventLookup}
           onCancelRequest={(id) => setAppToCancel(id)}
         />
       ) : null}
 
       {activeTab === 'certificates' ? (
-        <CertificatesTab onPreview={setSelectedCert} />
+        <CertificatesTab
+          certificates={dashboard.certificates}
+          onPreview={setSelectedCert}
+        />
       ) : null}
 
       {/* 1. Modal Preview Sertifikat Interaktif */}
@@ -275,7 +390,7 @@ export function VolunteerDashboardPage() {
                   telah berkontribusi secara luar biasa sebagai relawan dalam kegiatan
                 </p>
                 <h4 className="mt-3 font-heading text-lg font-extrabold text-primary">
-                  {getEventById(selectedCert.eventId)?.title ?? 'Event Migunani'}
+                    {getEventTitle(dashboard.eventLookup, selectedCert.eventId)}
                 </h4>
                 <p className="mt-2 text-xs text-muted-foreground">
                   dengan total kontribusi sebesar <strong className="text-foreground">{selectedCert.hours} Jam Kerja Sosial</strong>.
@@ -353,7 +468,10 @@ export function VolunteerDashboardPage() {
                 <p className="mt-2 text-sm text-muted-foreground leading-6">
                   Apakah Anda yakin ingin membatalkan pendaftaran Anda untuk kegiatan{' '}
                   <strong className="text-foreground">
-                    {getEventById(applications.find((app) => app.id === appToCancel)?.eventId ?? '')?.title}
+                    {getEventTitle(
+                      dashboard.eventLookup,
+                      visibleApplications.find((app) => app.id === appToCancel)?.eventId ?? '',
+                    )}
                   </strong>
                   ? Tindakan ini tidak dapat dibatalkan.
                 </p>
@@ -383,10 +501,14 @@ export function VolunteerDashboardPage() {
 function OverviewTab({
   activeApplications,
   savedEvents,
+  profile,
+  certificatesCount,
   onRemoveBookmark,
 }: {
   activeApplications: number
-  savedEvents: typeof events
+  savedEvents: VolunteerEvent[]
+  profile: VolunteerProfile
+  certificatesCount: number
   onRemoveBookmark: (id: string) => void
 }) {
   return (
@@ -411,7 +533,7 @@ function OverviewTab({
                   saved
                   detailPathPrefix="/volunteer/events"
                   variant="compact"
-                  {...getEventMatch(event, volunteerProfile)}
+                  {...getEventMatch(event, profile)}
                 />
                 <button
                   onClick={() => onRemoveBookmark(event.id)}
@@ -435,19 +557,19 @@ function OverviewTab({
             <div>
               <h2 className="font-heading text-xl font-extrabold">Impact summary</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {volunteerProfile.name} aktif di {volunteerProfile.interests.length}{' '}
+                {profile.name} aktif di {profile.interests.length}{' '}
                 kategori, punya {activeApplications} aplikasi berjalan, dan{' '}
-                {certificates.length} sertifikat tersimpan.
+                {certificatesCount} sertifikat tersimpan.
               </p>
             </div>
           </div>
           <div className="mt-5 space-y-3">
-            <ImpactRow label="Jam kontribusi" value={`${volunteerProfile.totalHours} jam`} />
+            <ImpactRow label="Jam kontribusi" value={`${profile.totalHours} jam`} />
             <ImpactRow
               label="Event selesai"
-              value={`${volunteerProfile.completedEvents} event`}
+              value={`${profile.completedEvents} event`}
             />
-            <ImpactRow label="Kota utama" value={volunteerProfile.city} />
+            <ImpactRow label="Kota utama" value={profile.city} />
           </div>
         </article>
 
@@ -468,9 +590,11 @@ function OverviewTab({
 
 function ApplicationsTab({
   applications,
+  eventLookup,
   onCancelRequest,
 }: {
-  applications: typeof initialApplications
+  applications: VolunteerApplication[]
+  eventLookup: VolunteerEvent[]
   onCancelRequest: (appId: string) => void
 }) {
   return (
@@ -482,7 +606,7 @@ function ApplicationsTab({
       />
       <div className="grid gap-4">
         {applications.map((application) => {
-          const event = getEventById(application.eventId)
+          const event = eventLookup.find((item) => item.id === application.eventId)
           const organizer = event ? getOrganizerById(event.organizerId) : undefined
 
           return (
@@ -544,9 +668,11 @@ function ApplicationsTab({
 }
 
 function CertificatesTab({
+  certificates,
   onPreview,
 }: {
-  onPreview: (cert: typeof certificates[0]) => void
+  certificates: Certificate[]
+  onPreview: (cert: Certificate) => void
 }) {
   return (
     <section className="space-y-4">
@@ -600,7 +726,7 @@ function ImpactRow({ label, value }: { label: string; value: string }) {
 function ApplicationTimeline({
   status,
 }: {
-  status: (typeof initialApplications)[number]['status']
+  status: VolunteerApplication['status']
 }) {
   const steps = getApplicationSteps(status)
 
@@ -636,7 +762,7 @@ function ApplicationTimeline({
   )
 }
 
-function getApplicationSteps(status: (typeof initialApplications)[number]['status']) {
+function getApplicationSteps(status: VolunteerApplication['status']) {
   if (status === 'Rejected') {
     return [
       { order: 1, label: 'Applied', helper: 'Aplikasi terkirim', active: true },
@@ -680,4 +806,69 @@ function getActiveTab(value: string | null): DashboardTab {
   }
 
   return 'overview'
+}
+
+type VolunteerDashboardResource = {
+  profile: VolunteerProfile
+  applications: VolunteerApplication[]
+  certificates: Certificate[]
+  savedEvents: VolunteerEvent[]
+  eventLookup: VolunteerEvent[]
+}
+
+function mapVolunteerDashboardResource(
+  dashboard: ApiVolunteerDashboard,
+): VolunteerDashboardResource {
+  const applications = dashboard.applications.map(mapApplication)
+  const certificates = dashboard.certificates.map(mapCertificate)
+  const savedEvents = dashboard.savedEvents.map(mapEvent)
+  const eventLookup = [
+    ...events,
+    ...savedEvents,
+    ...dashboard.applications
+      .map((application) => application.event)
+      .filter((event): event is ApiEvent => Boolean(event))
+      .map(mapEvent),
+  ]
+
+  return {
+    profile: dashboard.profile,
+    applications,
+    certificates,
+    savedEvents,
+    eventLookup: dedupeEvents(eventLookup),
+  }
+}
+
+function dedupeEvents(sourceEvents: VolunteerEvent[]) {
+  return Array.from(
+    sourceEvents
+      .reduce((eventMap, event) => eventMap.set(event.id, event), new Map<string, VolunteerEvent>())
+      .values(),
+  )
+}
+
+function getEventTitle(sourceEvents: VolunteerEvent[], eventId: string) {
+  return sourceEvents.find((event) => event.id === eventId)?.title ?? 'Event Migunani'
+}
+
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-lg border p-3 text-sm font-semibold',
+        tone === 'loading'
+          ? 'bg-accent text-accent-foreground'
+          : 'border-destructive/30 bg-destructive/10 text-destructive',
+      )}
+    >
+      {message}
+    </div>
+  )
 }

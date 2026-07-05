@@ -7,19 +7,32 @@ import {
   ShieldCheck,
   Star,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { PageHeader, StatsCard } from '@/components'
 import { getOrganizerEvents, organizers } from '@/data'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
+import { adminApi, mapOrganizer } from '@/services/api'
 
 export function AdminOrganizersPage() {
+  const loadOrganizers = useCallback(async () => {
+    return (await adminApi.getAdminOrganizers()).map(mapOrganizer)
+  }, [])
+  const {
+    data: adminOrganizers,
+    error: organizersError,
+    isLoading,
+    reload,
+  } = useAsyncResource(loadOrganizers, organizers)
+  const [organizerOverrides, setOrganizerOverrides] = useState<typeof organizers>([])
   const [query, setQuery] = useState('')
   const [verifiedFilter, setVerifiedFilter] = useState<'all' | 'verified' | 'unverified'>('all')
+  const visibleOrganizers = getVisibleOrganizers(adminOrganizers, organizerOverrides)
 
   const filteredOrganizers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
 
-    return organizers.filter((org) => {
+    return visibleOrganizers.filter((org) => {
       const matchesVerified =
         verifiedFilter === 'all' ||
         (verifiedFilter === 'verified' && org.verified) ||
@@ -34,10 +47,36 @@ export function AdminOrganizersPage() {
 
       return matchesVerified && matchesQuery
     })
-  }, [query, verifiedFilter])
+  }, [query, verifiedFilter, visibleOrganizers])
 
-  const verifiedCount = organizers.filter((o) => o.verified).length
-  const totalEvents = organizers.reduce((sum, org) => sum + getOrganizerEvents(org.id).length, 0)
+  const verifiedCount = visibleOrganizers.filter((o) => o.verified).length
+  const totalEvents = visibleOrganizers.reduce(
+    (sum, org) => sum + (org.totalEvents || getOrganizerEvents(org.id).length),
+    0,
+  )
+
+  async function updateVerification(organizerId: string, verified: boolean) {
+    const previousOverrides = organizerOverrides
+    const baseOrganizer = visibleOrganizers.find((org) => org.id === organizerId)
+
+    if (!baseOrganizer) {
+      return
+    }
+
+    setOrganizerOverrides((current) =>
+      upsertOrganizer(current, { ...baseOrganizer, verified }),
+    )
+
+    try {
+      const updatedOrganizer = mapOrganizer(
+        await adminApi.updateOrganizerVerification(organizerId, verified),
+      )
+      setOrganizerOverrides((current) => upsertOrganizer(current, updatedOrganizer))
+      void reload()
+    } catch {
+      setOrganizerOverrides(previousOverrides)
+    }
+  }
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
@@ -47,10 +86,20 @@ export function AdminOrganizersPage() {
         description="Pantau status verifikasi, performa, dan event yang dikelola oleh setiap organizer di Migunani."
       />
 
+      {isLoading ? (
+        <ApiNotice message="Memuat organizer dari API..." tone="loading" />
+      ) : null}
+      {organizersError ? (
+        <ApiNotice
+          message={`Data API belum tersedia, memakai organizer tampilan sementara. ${organizersError}`}
+          tone="error"
+        />
+      ) : null}
+
       <section className="grid gap-4 md:grid-cols-3">
         <StatsCard
           label="Total organizer"
-          value={organizers.length.toString()}
+          value={visibleOrganizers.length.toString()}
           helper="terdaftar di platform"
           icon={Building2}
           tone="green"
@@ -58,7 +107,7 @@ export function AdminOrganizersPage() {
         <StatsCard
           label="Terverifikasi"
           value={verifiedCount.toString()}
-          helper={`dari ${organizers.length} organizer`}
+          helper={`dari ${visibleOrganizers.length} organizer`}
           icon={ShieldCheck}
           tone="yellow"
         />
@@ -99,7 +148,7 @@ export function AdminOrganizersPage() {
 
       <p className="text-sm font-semibold text-muted-foreground">
         Menampilkan <span className="text-foreground">{filteredOrganizers.length}</span>{' '}
-        dari {organizers.length} organizer
+        dari {visibleOrganizers.length} organizer
       </p>
 
       <section className="grid gap-4 md:grid-cols-2">
@@ -152,9 +201,16 @@ export function AdminOrganizersPage() {
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <Building2 size={15} className="text-primary" />
-                  {orgEvents.length} event di platform
+                  {org.totalEvents || orgEvents.length} event di platform
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => void updateVerification(org.id, !org.verified)}
+                className="mt-5 inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted"
+              >
+                {org.verified ? 'Tandai unverified' : 'Verifikasi organizer'}
+              </button>
             </article>
           )
         })}
@@ -168,6 +224,50 @@ export function AdminOrganizersPage() {
           </p>
         </section>
       ) : null}
+    </div>
+  )
+}
+
+function getVisibleOrganizers(
+  adminOrganizers: typeof organizers,
+  overrides: typeof organizers,
+) {
+  const overrideMap = new Map(overrides.map((organizer) => [organizer.id, organizer]))
+
+  return adminOrganizers.map((organizer) => overrideMap.get(organizer.id) ?? organizer)
+}
+
+function upsertOrganizer(
+  currentOrganizers: typeof organizers,
+  nextOrganizer: (typeof organizers)[number],
+) {
+  const hasOrganizer = currentOrganizers.some(
+    (organizer) => organizer.id === nextOrganizer.id,
+  )
+
+  return hasOrganizer
+    ? currentOrganizers.map((organizer) =>
+        organizer.id === nextOrganizer.id ? nextOrganizer : organizer,
+      )
+    : [...currentOrganizers, nextOrganizer]
+}
+
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={
+        tone === 'loading'
+          ? 'rounded-lg border bg-accent p-3 text-sm font-semibold text-accent-foreground'
+          : 'rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive'
+      }
+    >
+      {message}
     </div>
   )
 }

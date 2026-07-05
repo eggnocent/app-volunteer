@@ -8,49 +8,136 @@ import {
   Check,
   X,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { CategoryChip, PageHeader, StatsCard, StatusBadge } from '@/components'
 import {
   getEventById,
+  getOrganizerById,
   volunteerApplications as initialApplications,
   volunteerProfile,
 } from '@/data'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate } from '@/lib/format'
+import { mapApplication, mapEvent, organizerApi } from '@/services/api'
+import { useAuth } from '@/providers/useAuth'
+import type { ApiApplication, ApiEvent } from '@/services/api'
+import type { ApplicationStatus, VolunteerApplication, VolunteerEvent } from '@/types/migunani'
+
+const fallbackOrganizerId = 'org-aksara-muda'
 
 export function OrganizerApplicantsPage() {
   const [searchParams] = useSearchParams()
+  const { user } = useAuth()
   const focusedEventId = searchParams.get('event')
-  
+  const organizerId = user?.organizerId ?? getOrganizerById(fallbackOrganizerId)?.id ?? fallbackOrganizerId
+  const fallbackResource = useMemo(
+    () => ({
+      applications: initialApplications,
+      events: initialApplications
+        .map((application) => getEventById(application.eventId))
+        .filter((event): event is VolunteerEvent => Boolean(event)),
+    }),
+    [],
+  )
+  const loadApplications = useCallback(async () => {
+    const apiApplications = await organizerApi.getOrganizerApplications(organizerId)
+    const mappedApplications = apiApplications.map(mapApplication)
+    const apiEvents = apiApplications
+      .map((application) => application.event)
+      .filter((event): event is ApiEvent => Boolean(event))
+      .map(mapEvent)
+
+    return {
+      applications: mappedApplications,
+      events: dedupeEvents([...fallbackResource.events, ...apiEvents]),
+    }
+  }, [fallbackResource.events, organizerId])
+  const {
+    data: resource,
+    error: applicantsError,
+    isLoading,
+    reload,
+  } = useAsyncResource(loadApplications, fallbackResource)
+
   // State for applications to allow interactive approve/reject actions
-  const [applications, setApplications] = useState(initialApplications)
+  const [applicationsOverride, setApplicationsOverride] =
+    useState<VolunteerApplication[] | null>(null)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('Semua status')
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null)
   const [checkedInIds, setCheckedInIds] = useState<string[]>([])
+  const [issuedCertificateIds, setIssuedCertificateIds] = useState<string[]>([])
+  const applications = applicationsOverride ?? resource.applications
 
   // Handle Approve Action
   const handleApprove = (applicationId: string) => {
-    setApplications((prev) =>
-      prev.map((app) =>
-        app.id === applicationId ? { ...app, status: 'Accepted' } : app
-      )
-    )
+    void updateStatus(applicationId, 'Accepted')
   }
 
   // Handle Reject Action
   const handleReject = (applicationId: string) => {
-    setApplications((prev) =>
-      prev.map((app) =>
-        app.id === applicationId ? { ...app, status: 'Rejected' } : app
-      )
-    )
+    void updateStatus(applicationId, 'Rejected')
   }
 
-  const handleCheckIn = (applicationId: string) => {
+  const handleCheckIn = async (applicationId: string) => {
     setCheckedInIds((current) =>
       current.includes(applicationId) ? current : [...current, applicationId],
+    )
+
+    try {
+      const updatedApplication = mapApplication(
+        await organizerApi.checkInApplication(organizerId, applicationId),
+      )
+      replaceApplication(updatedApplication)
+      void reload()
+    } catch {
+      setCheckedInIds((current) => current.filter((id) => id !== applicationId))
+    }
+  }
+
+  async function handleIssueCertificate(applicationId: string) {
+    setIssuedCertificateIds((current) =>
+      current.includes(applicationId) ? current : [...current, applicationId],
+    )
+
+    try {
+      await organizerApi.issueCertificate(organizerId, applicationId)
+    } catch {
+      setIssuedCertificateIds((current) =>
+        current.filter((id) => id !== applicationId),
+      )
+    }
+  }
+
+  async function updateStatus(
+    applicationId: string,
+    status: ApplicationStatus,
+  ) {
+    const previousApplications = applications
+    setApplicationsOverride(
+      previousApplications.map((app) =>
+        app.id === applicationId ? { ...app, status } : app,
+      ),
+    )
+
+    try {
+      const updatedApplication = mapApplication(
+        await organizerApi.updateApplicationStatus(organizerId, applicationId, status),
+      )
+      replaceApplication(updatedApplication)
+      void reload()
+    } catch {
+      setApplicationsOverride(previousApplications)
+    }
+  }
+
+  function replaceApplication(updatedApplication: VolunteerApplication) {
+    setApplicationsOverride((current) =>
+      (current ?? applications).map((app) =>
+        app.id === updatedApplication.id ? updatedApplication : app,
+      ),
     )
   }
 
@@ -60,7 +147,8 @@ export function OrganizerApplicantsPage() {
     return applications
       .map((application) => ({
         application,
-        event: getEventById(application.eventId),
+        event: resource.events.find((event) => event.id === application.eventId) ??
+          getEventById(application.eventId),
       }))
       .filter(({ event }) => !focusedEventId || event?.id === focusedEventId)
       .filter(({ application }) => {
@@ -85,9 +173,12 @@ export function OrganizerApplicantsPage() {
           .toLowerCase()
           .includes(normalizedQuery)
       })
-  }, [applications, focusedEventId, query, statusFilter])
+  }, [applications, focusedEventId, query, resource.events, statusFilter])
 
-  const focusedEvent = focusedEventId ? getEventById(focusedEventId) : undefined
+  const focusedEvent = focusedEventId
+    ? resource.events.find((event) => event.id === focusedEventId) ??
+      getEventById(focusedEventId)
+    : undefined
   const acceptedCount = applications.filter(
     (app) => (!focusedEventId || app.eventId === focusedEventId) && app.status === 'Accepted'
   ).length
@@ -105,7 +196,8 @@ export function OrganizerApplicantsPage() {
     ? applications.find((app) => app.id === selectedApplicationId)
     : undefined
   const selectedEvent = selectedApplication
-    ? getEventById(selectedApplication.eventId)
+    ? resource.events.find((event) => event.id === selectedApplication.eventId) ??
+      getEventById(selectedApplication.eventId)
     : undefined
 
   return (
@@ -127,6 +219,16 @@ export function OrganizerApplicantsPage() {
           </Link>
         }
       />
+
+      {isLoading ? (
+        <ApiNotice message="Memuat applicant dari API..." tone="loading" />
+      ) : null}
+      {applicantsError ? (
+        <ApiNotice
+          message={`Data API belum tersedia, memakai applicant tampilan sementara. ${applicantsError}`}
+          tone="error"
+        />
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatsCard
@@ -268,9 +370,21 @@ export function OrganizerApplicantsPage() {
                     >
                       Check-in
                     </button>
-                  ) : checkedInIds.includes(application.id) ? (
+                  ) : application.status === 'Completed' &&
+                    !issuedCertificateIds.includes(application.id) ? (
+                    <button
+                      onClick={() => void handleIssueCertificate(application.id)}
+                      className="inline-flex h-8 items-center justify-center rounded bg-secondary/30 px-3 text-xs font-bold text-secondary-foreground transition hover:bg-secondary"
+                      title="Terbitkan sertifikat"
+                    >
+                      Issue cert
+                    </button>
+                  ) : checkedInIds.includes(application.id) ||
+                    issuedCertificateIds.includes(application.id) ? (
                     <span className="text-xs font-bold text-primary">
-                      Checked-in
+                      {issuedCertificateIds.includes(application.id)
+                        ? 'Cert issued'
+                        : 'Checked-in'}
                     </span>
                   ) : (
                     <span className="text-xs font-bold text-muted-foreground/50">
@@ -288,11 +402,14 @@ export function OrganizerApplicantsPage() {
         <ApplicantDetailModal
           application={selectedApplication}
           event={selectedEvent}
+          organizerId={organizerId}
           checkedIn={checkedInIds.includes(selectedApplication.id)}
           onClose={() => setSelectedApplicationId(null)}
           onApprove={() => handleApprove(selectedApplication.id)}
           onReject={() => handleReject(selectedApplication.id)}
           onCheckIn={() => handleCheckIn(selectedApplication.id)}
+          onIssueCertificate={() => void handleIssueCertificate(selectedApplication.id)}
+          certificateIssued={issuedCertificateIds.includes(selectedApplication.id)}
         />
       )}
     </div>
@@ -302,24 +419,50 @@ export function OrganizerApplicantsPage() {
 function ApplicantDetailModal({
   application,
   event,
+  organizerId,
   checkedIn,
   onClose,
   onApprove,
   onReject,
   onCheckIn,
+  onIssueCertificate,
+  certificateIssued,
 }: {
-  application: typeof initialApplications[number]
-  event?: ReturnType<typeof getEventById>
+  application: VolunteerApplication
+  event?: VolunteerEvent
+  organizerId: string
   checkedIn: boolean
   onClose: () => void
   onApprove: () => void
   onReject: () => void
   onCheckIn: () => void
+  onIssueCertificate: () => void
+  certificateIssued: boolean
 }) {
+  const loadApplicationDetail = useCallback(
+    () => organizerApi.getOrganizerApplication(organizerId, application.id),
+    [application.id, organizerId],
+  )
+  const { data: detail, error, isLoading } = useAsyncResource<ApiApplication | null>(
+    loadApplicationDetail,
+    null,
+  )
+  const volunteerName = detail?.volunteer?.name ?? volunteerProfile.name
+  const volunteerProfileLine = [
+    detail?.volunteer?.city ?? volunteerProfile.city,
+    volunteerProfile.major,
+    volunteerProfile.university,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  const motivation = detail?.motivation ?? application.motivation
+  const availability = detail?.availability ?? application.availability
   const matchNotes = [
     application.role,
     event?.category,
-    volunteerProfile.city === event?.city ? `Dekat ${volunteerProfile.city}` : null,
+    (detail?.volunteer?.city ?? volunteerProfile.city) === event?.city
+      ? `Dekat ${event?.city}`
+      : null,
   ].filter(Boolean)
 
   return (
@@ -331,10 +474,10 @@ function ApplicantDetailModal({
               Applicant detail
             </p>
             <h2 className="mt-1 font-heading text-2xl font-extrabold">
-              {volunteerProfile.name}
+              {volunteerName}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {volunteerProfile.major} · {volunteerProfile.university}
+              {volunteerProfileLine}
             </p>
           </div>
           <button
@@ -349,6 +492,15 @@ function ApplicantDetailModal({
 
         <div className="grid gap-5 p-5 md:grid-cols-[1fr_240px]">
           <div className="space-y-5">
+            {isLoading ? (
+              <ApiNotice message="Memuat detail applicant dari API..." tone="loading" />
+            ) : null}
+            {error ? (
+              <ApiNotice
+                message={`Detail API belum tersedia, memakai data list. ${error}`}
+                tone="error"
+              />
+            ) : null}
             <DetailBlock label="Event" value={event?.title ?? 'Event Migunani'} />
             <DetailBlock label="Role dipilih" value={application.role} />
             <div>
@@ -356,7 +508,7 @@ function ApplicantDetailModal({
                 Motivasi
               </p>
               <p className="mt-2 rounded-md bg-muted p-3 text-sm leading-6 text-muted-foreground">
-                {application.motivation}
+                {motivation}
               </p>
             </div>
             <div>
@@ -364,7 +516,7 @@ function ApplicantDetailModal({
                 Availability
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {application.availability.map((item) => (
+                {availability.map((item) => (
                   <span
                     key={item}
                     className="rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-accent-foreground"
@@ -440,6 +592,15 @@ function ApplicantDetailModal({
               <ClipboardCheck size={16} />
               Check-in relawan
             </button>
+          ) : application.status === 'Completed' && !certificateIssued ? (
+            <button
+              type="button"
+              onClick={onIssueCertificate}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-secondary px-4 text-sm font-bold text-secondary-foreground transition hover:bg-secondary/80"
+            >
+              <CheckCircle2 size={16} />
+              Terbitkan sertifikat
+            </button>
           ) : (
             <button
               type="button"
@@ -460,6 +621,34 @@ function DetailBlock({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-xs font-bold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-bold text-foreground">{value}</p>
+    </div>
+  )
+}
+
+function dedupeEvents(sourceEvents: VolunteerEvent[]) {
+  return Array.from(
+    sourceEvents
+      .reduce((eventMap, event) => eventMap.set(event.id, event), new Map<string, VolunteerEvent>())
+      .values(),
+  )
+}
+
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={
+        tone === 'loading'
+          ? 'rounded-lg border bg-accent p-3 text-sm font-semibold text-accent-foreground'
+          : 'rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive'
+      }
+    >
+      {message}
     </div>
   )
 }

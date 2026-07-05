@@ -1,4 +1,4 @@
-import { CalendarDays, Users } from 'lucide-react'
+import { CalendarDays, Pencil, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { StatusBadge } from '@/components/StatusBadge'
@@ -8,11 +8,13 @@ import type { VolunteerEvent } from '@/types/migunani'
 type OrganizerEventRowProps = {
   event: VolunteerEvent
   detailPathPrefix?: string
+  canEdit?: boolean
 }
 
 export function OrganizerEventRow({
   event,
   detailPathPrefix = '/organizer/events',
+  canEdit = false,
 }: OrganizerEventRowProps) {
   const fill = getFillPercentage(event.registered, event.quota)
 
@@ -51,6 +53,15 @@ export function OrganizerEventRow({
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-primary" style={{ width: `${fill}%` }} />
         </div>
+        {canEdit ? (
+          <Link
+            to={`/organizer/events/${event.id}/edit`}
+            className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border bg-card text-xs font-bold transition hover:bg-muted"
+          >
+            <Pencil size={14} />
+            Edit event
+          </Link>
+        ) : null}
       </div>
     </article>
   )

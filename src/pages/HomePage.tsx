@@ -10,7 +10,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { CategoryChip, EventCard, StatsCard } from '@/components'
@@ -20,10 +20,42 @@ import {
   featuredEvents,
   getOrganizerById,
 } from '@/data'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
+import { mapCategory, mapEvent, publicApi } from '@/services/api'
 
 export function HomePage() {
-  const totalSlots = events.reduce((sum, event) => sum + event.quota, 0)
-  const totalRegistered = events.reduce((sum, event) => sum + event.registered, 0)
+  const fallbackHome = useMemo(
+    () => ({
+      stats: {
+        eventCount: events.length,
+        totalSlots: events.reduce((sum, event) => sum + event.quota, 0),
+        totalRegistered: events.reduce((sum, event) => sum + event.registered, 0),
+        categoryCount: categories.length,
+      },
+      categories,
+      featuredEvents,
+    }),
+    [],
+  )
+  const loadHome = useCallback(async () => {
+    const home = await publicApi.getHome()
+
+    return {
+      stats: {
+        eventCount: home.stats.eventCount,
+        totalSlots: home.stats.totalSlots,
+        totalRegistered: home.stats.totalRegistered,
+        categoryCount: home.stats.categoryCount,
+      },
+      categories: home.categories.map(mapCategory),
+      featuredEvents: home.featuredEvents.map(mapEvent),
+    }
+  }, [])
+  const {
+    data: home,
+    error: homeError,
+    isLoading,
+  } = useAsyncResource(loadHome, fallbackHome)
   const [searchQuery, setSearchQuery] = useState('')
   const exploreHref = searchQuery.trim()
     ? `/events?q=${encodeURIComponent(searchQuery.trim())}`
@@ -132,18 +164,28 @@ export function HomePage() {
         </div>
       </section>
 
+      {isLoading ? (
+        <ApiNotice message="Memuat beranda dari API..." tone="loading" />
+      ) : null}
+      {homeError ? (
+        <ApiNotice
+          message={`Data API belum tersedia, memakai data tampilan sementara. ${homeError}`}
+          tone="error"
+        />
+      ) : null}
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatsCard
           label="Event tersedia"
-          value={events.length.toString()}
+          value={home.stats.eventCount.toString()}
           helper="lintas kategori sosial"
           icon={CalendarDays}
           tone="green"
         />
         <StatsCard
           label="Slot relawan"
-          value={totalSlots.toString()}
-          helper={`${totalRegistered} pendaftar aktif`}
+          value={home.stats.totalSlots.toString()}
+          helper={`${home.stats.totalRegistered} pendaftar aktif`}
           icon={Users}
           tone="yellow"
         />
@@ -156,7 +198,7 @@ export function HomePage() {
         />
         <StatsCard
           label="Kategori aksi"
-          value={categories.length.toString()}
+          value={home.stats.categoryCount.toString()}
           helper="pendidikan sampai bencana"
           icon={Sparkles}
           tone="neutral"
@@ -210,7 +252,7 @@ export function HomePage() {
           </Link>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {categories.slice(0, 4).map((category) => (
+          {home.categories.slice(0, 4).map((category) => (
             <Link
               key={category.id}
               to="/events"
@@ -243,7 +285,7 @@ export function HomePage() {
           </Link>
         </div>
         <div className="grid gap-5 lg:grid-cols-3">
-          {featuredEvents.map((event) => (
+          {home.featuredEvents.map((event) => (
             <EventCard
               key={event.id}
               event={event}
@@ -252,6 +294,26 @@ export function HomePage() {
           ))}
         </div>
       </section>
+    </div>
+  )
+}
+
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={
+        tone === 'loading'
+          ? 'rounded-lg border bg-accent p-3 text-sm font-semibold text-accent-foreground'
+          : 'rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive'
+      }
+    >
+      {message}
     </div>
   )
 }

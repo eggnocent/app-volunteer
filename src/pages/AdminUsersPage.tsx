@@ -4,17 +4,27 @@ import {
   Search,
   ShieldCheck,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { PageHeader, StatsCard } from '@/components'
 import { platformUsers } from '@/data'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate } from '@/lib/format'
+import { adminApi } from '@/services/api'
 import type { UserRole } from '@/types/migunani'
 
 type RoleFilter = UserRole | 'all'
 type StatusFilter = 'all' | 'Active' | 'Inactive' | 'Suspended'
 
 export function AdminUsersPage() {
+  const loadUsers = useCallback(() => adminApi.getAdminUsers(), [])
+  const {
+    data: users,
+    error: usersError,
+    isLoading,
+    reload,
+  } = useAsyncResource(loadUsers, platformUsers)
+  const [userOverrides, setUserOverrides] = useState<typeof platformUsers>([])
   const [query, setQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -22,7 +32,7 @@ export function AdminUsersPage() {
   const filteredUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
 
-    return platformUsers.filter((user) => {
+    return getVisibleUsers(users, userOverrides).filter((user) => {
       const matchesRole = roleFilter === 'all' || user.role === roleFilter
       const matchesStatus = statusFilter === 'all' || user.status === statusFilter
 
@@ -35,11 +45,35 @@ export function AdminUsersPage() {
 
       return matchesRole && matchesStatus && matchesQuery
     })
-  }, [query, roleFilter, statusFilter])
+  }, [query, roleFilter, statusFilter, userOverrides, users])
 
-  const volunteerCount = platformUsers.filter((u) => u.role === 'volunteer').length
-  const organizerCount = platformUsers.filter((u) => u.role === 'organizer').length
-  const adminCount = platformUsers.filter((u) => u.role === 'admin').length
+  const visibleUsers = getVisibleUsers(users, userOverrides)
+  const volunteerCount = visibleUsers.filter((u) => u.role === 'volunteer').length
+  const organizerCount = visibleUsers.filter((u) => u.role === 'organizer').length
+  const adminCount = visibleUsers.filter((u) => u.role === 'admin').length
+
+  async function updateStatus(userId: string, status: StatusFilter) {
+    if (status === 'all') {
+      return
+    }
+
+    const previousOverrides = userOverrides
+    const baseUser = visibleUsers.find((user) => user.id === userId)
+
+    if (!baseUser) {
+      return
+    }
+
+    setUserOverrides((current) => upsertUser(current, { ...baseUser, status }))
+
+    try {
+      const updatedUser = await adminApi.updateUserStatus(userId, status)
+      setUserOverrides((current) => upsertUser(current, updatedUser))
+      void reload()
+    } catch {
+      setUserOverrides(previousOverrides)
+    }
+  }
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
@@ -48,6 +82,16 @@ export function AdminUsersPage() {
         title="Kelola semua pengguna platform."
         description="Lihat, cari, dan filter seluruh pengguna Migunani berdasarkan role dan status akun."
       />
+
+      {isLoading ? (
+        <ApiNotice message="Memuat user dari API..." tone="loading" />
+      ) : null}
+      {usersError ? (
+        <ApiNotice
+          message={`Data API belum tersedia, memakai user tampilan sementara. ${usersError}`}
+          tone="error"
+        />
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
         <StatsCard
@@ -112,7 +156,7 @@ export function AdminUsersPage() {
 
       <p className="text-sm font-semibold text-muted-foreground">
         Menampilkan <span className="text-foreground">{filteredUsers.length}</span>{' '}
-        dari {platformUsers.length} pengguna
+        dari {visibleUsers.length} pengguna
       </p>
 
       <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
@@ -153,11 +197,41 @@ export function AdminUsersPage() {
               <span className="hidden text-sm font-semibold text-muted-foreground lg:block">
                 {formatDate(user.joinedAt)}
               </span>
-              <UserStatusBadge status={user.status} />
+              <select
+                value={user.status}
+                onChange={(event) =>
+                  void updateStatus(user.id, event.target.value as StatusFilter)
+                }
+                className="h-9 rounded-md border bg-background px-2 text-xs font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Suspended">Suspended</option>
+              </select>
             </article>
           ))}
         </div>
       </section>
+    </div>
+  )
+}
+
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={
+        tone === 'loading'
+          ? 'rounded-lg border bg-accent p-3 text-sm font-semibold text-accent-foreground'
+          : 'rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive'
+      }
+    >
+      {message}
     </div>
   )
 }
@@ -185,18 +259,19 @@ function RoleBadge({ role }: { role: string }) {
   )
 }
 
-function UserStatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    Active: 'bg-accent text-accent-foreground',
-    Inactive: 'bg-muted text-muted-foreground',
-    Suspended: 'bg-destructive/10 text-destructive',
-  }
+function getVisibleUsers(
+  users: typeof platformUsers,
+  overrides: typeof platformUsers,
+) {
+  const overrideMap = new Map(overrides.map((user) => [user.id, user]))
 
-  return (
-    <span
-      className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-bold ${styles[status] ?? styles.Active}`}
-    >
-      {status}
-    </span>
-  )
+  return users.map((user) => overrideMap.get(user.id) ?? user)
+}
+
+function upsertUser(users: typeof platformUsers, nextUser: (typeof platformUsers)[number]) {
+  const hasUser = users.some((user) => user.id === nextUser.id)
+
+  return hasUser
+    ? users.map((user) => (user.id === nextUser.id ? nextUser : user))
+    : [...users, nextUser]
 }

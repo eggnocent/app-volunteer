@@ -8,12 +8,14 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 
 import { CategoryChip, EventCard, PageHeader } from '@/components'
 import { categories, getOrganizerById } from '@/data'
 import { cn } from '@/lib/utils'
+import { mapEvent, organizerApi } from '@/services/api'
+import { useAuth } from '@/providers/useAuth'
 import type { EventCategory, EventMode, VolunteerEvent, VolunteerRole } from '@/types/migunani'
 
 const roleOptions: VolunteerRole[] = [
@@ -28,8 +30,16 @@ const modeOptions: EventMode[] = ['Offline', 'Online', 'Hybrid']
 
 const previewImage =
   'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1200&q=80'
+const fallbackOrganizerId = 'org-aksara-muda'
 
-export function CreateEventPage() {
+type CreateEventPageProps = {
+  pageMode?: 'create' | 'edit'
+}
+
+export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
+  const { user } = useAuth()
+  const { eventId } = useParams()
+  const isEditMode = pageMode === 'edit'
   const [title, setTitle] = useState('Gerakan Mentoring Kampus Berdampak')
   const [category, setCategory] = useState<EventCategory>('Pendidikan')
   const [mode, setMode] = useState<EventMode>('Offline')
@@ -50,6 +60,9 @@ export function CreateEventPage() {
   ])
   const [published, setPublished] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
+  const [isLoadingEvent, setIsLoadingEvent] = useState(isEditMode)
+  const [publishError, setPublishError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const previewEvent = useMemo<VolunteerEvent>(() => {
     const duration = calculateDuration(startTime, endTime)
@@ -59,7 +72,7 @@ export function CreateEventPage() {
       slug: 'preview-event',
       title: title || 'Judul event volunteer',
       category,
-      organizerId: 'org-aksara-muda',
+      organizerId: fallbackOrganizerId,
       location: location || 'Lokasi kegiatan',
       city: city || 'Kota',
       mode,
@@ -99,6 +112,58 @@ export function CreateEventPage() {
 
   const organizer = getOrganizerById(previewEvent.organizerId)
 
+  useEffect(() => {
+    if (!isEditMode || !eventId) {
+      return
+    }
+
+    let cancelled = false
+    const organizerId = user?.organizerId ?? fallbackOrganizerId
+    const targetEventId = eventId
+
+    async function loadEventForEdit() {
+      setIsLoadingEvent(true)
+      setLoadError(null)
+
+      try {
+        const apiEvent = await organizerApi.getOrganizerEvent(organizerId, targetEventId)
+        const event = mapEvent(apiEvent)
+
+        if (cancelled) {
+          return
+        }
+
+        setTitle(event.title)
+        setCategory(event.category)
+        setMode(event.mode)
+        setCity(event.city)
+        setLocation(event.location)
+        setDate(event.date)
+        setStartTime(event.startTime)
+        setEndTime(event.endTime)
+        setQuota(event.quota)
+        setDescription(event.description)
+        setBenefits(event.benefits.join(', '))
+        setSkills(event.skills.join(', '))
+        setSelectedRoles(event.roles)
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(getErrorMessage(error))
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingEvent(false)
+        }
+      }
+    }
+
+    void loadEventForEdit()
+
+    return () => {
+      cancelled = true
+    }
+  }, [eventId, isEditMode, user?.organizerId])
+
   function toggleRole(role: VolunteerRole) {
     setSelectedRoles((current) =>
       current.includes(role)
@@ -107,12 +172,42 @@ export function CreateEventPage() {
     )
   }
 
-  function publishPreview() {
+  async function publishPreview() {
+    const organizerId = user?.organizerId ?? fallbackOrganizerId
     setIsPublishing(true)
-    setTimeout(() => {
+    setPublishError(null)
+
+    try {
+      const payload = {
+        title: previewEvent.title,
+        category: previewEvent.category,
+        mode: previewEvent.mode,
+        city: previewEvent.city,
+        location: previewEvent.location,
+        date: previewEvent.date,
+        startTime: previewEvent.startTime,
+        endTime: previewEvent.endTime,
+        quota: previewEvent.quota,
+        description: previewEvent.description,
+        benefits: previewEvent.benefits,
+        skills: previewEvent.skills,
+        roles: previewEvent.roles,
+      }
+
+      const targetEventId = eventId
+
+      if (isEditMode && targetEventId) {
+        await organizerApi.updateOrganizerEvent(organizerId, targetEventId, payload)
+      } else {
+        await organizerApi.createOrganizerEvent(organizerId, payload)
+      }
+
       setIsPublishing(false)
       setPublished(true)
-    }, 1100)
+    } catch (error) {
+      setPublishError(getErrorMessage(error))
+      setIsPublishing(false)
+    }
   }
 
   return (
@@ -126,14 +221,22 @@ export function CreateEventPage() {
       </Link>
 
       <PageHeader
-        eyebrow="Create Event"
-        title="Buat event volunteer dengan preview langsung."
-        description="Form ini frontend-only. Organizer bisa melihat bagaimana event akan tampil di marketplace sebelum dipublikasikan."
+        eyebrow={isEditMode ? 'Edit Event' : 'Create Event'}
+        title={
+          isEditMode
+            ? 'Edit event volunteer.'
+            : 'Buat event volunteer dengan preview langsung.'
+        }
+        description={
+          isEditMode
+            ? 'Perbarui informasi event yang sudah tersimpan di backend organizer.'
+            : 'Organizer bisa melihat bagaimana event akan tampil di marketplace sebelum dipublikasikan.'
+        }
         action={
           <button
             type="button"
             onClick={publishPreview}
-            disabled={isPublishing}
+            disabled={isPublishing || isLoadingEvent}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
           >
             {isPublishing ? (
@@ -144,12 +247,24 @@ export function CreateEventPage() {
             ) : (
               <>
                 <CalendarPlus size={17} />
-                Publish preview
+                {isEditMode ? 'Simpan perubahan' : 'Publish preview'}
               </>
             )}
           </button>
         }
       />
+
+      {isLoadingEvent ? (
+        <section className="rounded-lg border bg-accent p-4 text-sm font-semibold text-accent-foreground">
+          Memuat data event dari API...
+        </section>
+      ) : null}
+
+      {loadError ? (
+        <section className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm font-semibold text-destructive">
+          Data event belum bisa dimuat. Form tetap memakai data tampilan sementara. {loadError}
+        </section>
+      ) : null}
 
       {published ? (
         <section className="rounded-lg border border-primary/30 bg-accent p-5 shadow-sm">
@@ -157,14 +272,22 @@ export function CreateEventPage() {
             <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-primary" />
             <div>
               <h2 className="font-heading text-xl font-extrabold">
-                Preview event berhasil dibuat.
+                {isEditMode
+                  ? 'Perubahan event berhasil disimpan.'
+                  : 'Preview event berhasil dibuat.'}
               </h2>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Ini masih simulasi frontend. Di produk nyata, data akan dikirim ke backend
-                dan masuk ke review organizer.
+                Event sudah dikirim ke backend dan akan tampil mengikuti status
+                publikasi dari API organizer.
               </p>
             </div>
           </div>
+        </section>
+      ) : null}
+
+      {publishError ? (
+        <section className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm font-semibold text-destructive">
+          {publishError}
         </section>
       ) : null}
 
@@ -440,4 +563,12 @@ function calculateDuration(startTime: string, endTime: string) {
   const duration = Math.max(end - start, 60)
 
   return Math.round(duration / 60)
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Event belum bisa dipublikasikan.'
 }

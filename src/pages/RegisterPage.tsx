@@ -11,6 +11,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { categories } from '@/data'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/providers/useAuth'
+import type { ApiRegisterPayload } from '@/services/api/types'
 import type { EventCategory } from '@/types/migunani'
 import type { FormEvent } from 'react'
 
@@ -47,8 +49,12 @@ const organizerFocusOptions = [
 
 export function RegisterPage({ role }: RegisterPageProps) {
   const [searchParams] = useSearchParams()
+  const { register, status } = useAuth()
   const [stage, setStage] = useState<'form' | 'onboarding' | 'success'>('form')
   const [isSaving, setIsSaving] = useState(false)
+  const [registerError, setRegisterError] = useState<string | null>(null)
+  const [pendingPayload, setPendingPayload] =
+    useState<ApiRegisterPayload | null>(null)
   const [selectedInterests, setSelectedInterests] = useState<EventCategory[]>([
     'Pendidikan',
   ])
@@ -75,15 +81,52 @@ export function RegisterPage({ role }: RegisterPageProps) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setRegisterError(null)
+    const formData = new FormData(event.currentTarget)
+    const password = getFormString(formData, 'password')
+    const passwordConfirmation = getFormString(formData, 'password_confirmation')
+
+    if (password !== passwordConfirmation) {
+      setRegisterError('Konfirmasi password belum sama.')
+      return
+    }
+
+    const name = getFormString(formData, 'name')
+
+    setPendingPayload({
+      name,
+      email: getFormString(formData, 'email'),
+      password,
+      password_confirmation: passwordConfirmation,
+      role,
+      phone: getFormString(formData, 'phone'),
+      city: getFormString(formData, 'city'),
+      organizationName: isOrganizer ? name : undefined,
+      organizationType: isOrganizer
+        ? getFormString(formData, 'organizationType')
+        : undefined,
+      university: isOrganizer ? undefined : getFormString(formData, 'university'),
+    })
     setStage('onboarding')
   }
 
-  function finishOnboarding() {
+  async function finishOnboarding() {
+    if (!pendingPayload) {
+      setStage('form')
+      return
+    }
+
     setIsSaving(true)
-    setTimeout(() => {
+    setRegisterError(null)
+
+    try {
+      await Promise.all([register(pendingPayload), wait(650)])
       setIsSaving(false)
       setStage('success')
-    }, 1100)
+    } catch (error) {
+      setRegisterError(getErrorMessage(error))
+      setIsSaving(false)
+    }
   }
 
   if (stage === 'success') {
@@ -101,8 +144,8 @@ export function RegisterPage({ role }: RegisterPageProps) {
               Akun {isOrganizer ? 'organizer' : 'relawan'} siap digunakan.
             </h1>
             <p className="mt-4 max-w-2xl leading-7 text-primary-foreground/78">
-              Ini masih simulasi frontend. Pada produk nyata, data akan diproses
-              melalui backend dan sesi login akan dibuat setelah verifikasi.
+              Data akun sudah dikirim ke backend dan sesi login dibuat lewat
+              Sanctum. Dashboard masih memakai data tampilan sementara.
             </p>
           </div>
           <div className="flex flex-col gap-3 p-6 sm:flex-row">
@@ -240,6 +283,12 @@ export function RegisterPage({ role }: RegisterPageProps) {
             </div>
           )}
 
+          {registerError ? (
+            <div className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+              {registerError}
+            </div>
+          ) : null}
+
           <div className="mt-8 flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-between">
             <button
               type="button"
@@ -251,10 +300,10 @@ export function RegisterPage({ role }: RegisterPageProps) {
             <button
               type="button"
               onClick={finishOnboarding}
-              disabled={isSaving}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+              disabled={isSaving || status === 'loading'}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isSaving ? (
+              {isSaving || status === 'loading' ? (
                 <>
                   <span className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                   Menyimpan...
@@ -327,8 +376,8 @@ export function RegisterPage({ role }: RegisterPageProps) {
             </h2>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
               {isOrganizer
-                ? 'Isi informasi dasar organisasi. Setelah submit, prototype langsung membuka dashboard organizer.'
-                : 'Isi informasi dasar relawan. Setelah submit, prototype langsung membuka dashboard relawan.'}
+                ? 'Isi informasi dasar organisasi. Setelah onboarding selesai, akun dibuat melalui backend.'
+                : 'Isi informasi dasar relawan. Setelah onboarding selesai, akun dibuat melalui backend.'}
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -338,6 +387,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
               >
                 <input
                   required
+                  name="name"
                   placeholder={isOrganizer ? 'Komunitas Peduli Kota' : 'Nadira Putri'}
                   className={inputClassName}
                 />
@@ -346,6 +396,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
               <Field label="Email">
                 <input
                   required
+                  name="email"
                   type="email"
                   placeholder={isOrganizer ? 'organizer@migunani.id' : 'relawan@migunani.id'}
                   className={inputClassName}
@@ -355,6 +406,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
               <Field label="Nomor WhatsApp">
                 <input
                   required
+                  name="phone"
                   type="tel"
                   placeholder="08xxxxxxxxxx"
                   className={inputClassName}
@@ -364,7 +416,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
               {isOrganizer ? (
                 <>
                   <Field label="Tipe organisasi">
-                    <select required className={inputClassName}>
+                    <select required name="organizationType" className={inputClassName}>
                       <option value="">Pilih tipe</option>
                       <option>Komunitas</option>
                       <option>Yayasan</option>
@@ -373,7 +425,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
                     </select>
                   </Field>
                   <Field label="Kota">
-                    <input required placeholder="Yogyakarta" className={inputClassName} />
+                    <input required name="city" placeholder="Yogyakarta" className={inputClassName} />
                   </Field>
                 </>
               ) : (
@@ -381,12 +433,13 @@ export function RegisterPage({ role }: RegisterPageProps) {
                   <Field label="Universitas / komunitas">
                     <input
                       required
+                      name="university"
                       placeholder="Universitas Gadjah Mada"
                       className={inputClassName}
                     />
                   </Field>
                   <Field label="Kota">
-                    <input required placeholder="Yogyakarta" className={inputClassName} />
+                    <input required name="city" placeholder="Yogyakarta" className={inputClassName} />
                   </Field>
                 </>
               )}
@@ -394,6 +447,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
               <Field label="Password">
                 <input
                   required
+                  name="password"
                   type="password"
                   minLength={8}
                   placeholder="Minimal 8 karakter"
@@ -404,6 +458,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
               <Field label="Konfirmasi password">
                 <input
                   required
+                  name="password_confirmation"
                   type="password"
                   minLength={8}
                   placeholder="Ulangi password"
@@ -411,6 +466,12 @@ export function RegisterPage({ role }: RegisterPageProps) {
                 />
               </Field>
             </div>
+
+            {registerError ? (
+              <div className="mt-5 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+                {registerError}
+              </div>
+            ) : null}
 
             <button
               type="submit"
@@ -499,6 +560,26 @@ function ChoiceButton({
       {children}
     </button>
   )
+}
+
+function getFormString(formData: FormData, key: string) {
+  const value = formData.get(key)
+
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Register gagal. Periksa kembali data akun.'
 }
 
 function toggleString(

@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Star,
 } from 'lucide-react'
+import { useCallback, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import {
@@ -23,7 +24,9 @@ import {
   volunteerApplications,
   volunteerProfile,
 } from '@/data'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
+import { mapApplication, mapEvent, publicApi } from '@/services/api'
 
 type EventDetailPageProps = {
   viewer?: 'public' | 'volunteer' | 'organizer'
@@ -31,7 +34,40 @@ type EventDetailPageProps = {
 
 export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
   const { slug } = useParams()
-  const event = slug ? getEventBySlug(slug) : undefined
+  const fallbackEvent = slug ? getEventBySlug(slug) : undefined
+  const fallbackResource = useMemo(
+    () =>
+      fallbackEvent
+        ? {
+            event: fallbackEvent,
+            relatedEvents: getRelatedEvents(fallbackEvent.id),
+            volunteerApplication: volunteerApplications.find(
+              (application) => application.eventId === fallbackEvent.id,
+            ),
+          }
+        : undefined,
+    [fallbackEvent],
+  )
+  const loadEvent = useCallback(async () => {
+    if (!slug) {
+      return undefined
+    }
+
+    const apiEvent = await publicApi.getEvent(slug)
+
+    return {
+      event: mapEvent(apiEvent),
+      relatedEvents: (apiEvent.relatedEvents ?? []).map(mapEvent),
+      volunteerApplication: apiEvent.myApplication
+        ? mapApplication(apiEvent.myApplication)
+        : undefined,
+    }
+  }, [slug])
+  const { data: detailResource, error: detailError, isLoading } = useAsyncResource(
+    loadEvent,
+    fallbackResource,
+  )
+  const event = detailResource?.event
   const organizer = event ? getOrganizerById(event.organizerId) : undefined
 
   if (!event) {
@@ -44,10 +80,8 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
     )
   }
 
-  const relatedEvents = getRelatedEvents(event.id)
-  const volunteerApplication = volunteerApplications.find(
-    (application) => application.eventId === event.id,
-  )
+  const relatedEvents = detailResource.relatedEvents
+  const volunteerApplication = detailResource.volunteerApplication
   const isVolunteerView = viewer === 'volunteer'
   const isOrganizerView = viewer === 'organizer'
   const applyHref = isVolunteerView
@@ -73,6 +107,16 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
         <ArrowLeft size={16} />
         {isVolunteerView || isOrganizerView ? 'Kembali ke dashboard' : 'Kembali ke explore'}
       </Link>
+
+      {isLoading ? (
+        <ApiNotice message="Memuat detail event dari API..." tone="loading" />
+      ) : null}
+      {detailError ? (
+        <ApiNotice
+          message={`Detail API belum tersedia, memakai data tampilan sementara. ${detailError}`}
+          tone="error"
+        />
+      ) : null}
 
       <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
         <div className="relative h-[320px] bg-muted md:h-[420px]">
@@ -207,6 +251,26 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
   )
 }
 
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={
+        tone === 'loading'
+          ? 'rounded-lg border bg-accent p-3 text-sm font-semibold text-accent-foreground'
+          : 'rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive'
+      }
+    >
+      {message}
+    </div>
+  )
+}
+
 function EventAction({
   applyHref,
   isVolunteerView,
@@ -234,6 +298,12 @@ function EventAction({
         >
           Kelola applicant
           <ArrowRight size={17} />
+        </Link>
+        <Link
+          to={`/organizer/events/${eventId}/edit`}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border bg-card px-5 text-sm font-bold transition hover:bg-muted"
+        >
+          Edit event
         </Link>
       </div>
     )

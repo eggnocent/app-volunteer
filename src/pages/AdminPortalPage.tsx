@@ -1,7 +1,38 @@
 import { ArrowRight, ShieldCheck } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+
+import { useAuth } from '@/providers/useAuth'
+import type { FormEvent } from 'react'
+import type { UserRole } from '@/types/migunani'
 
 export function AdminPortalPage() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const { login, status } = useAuth()
+  const [email, setEmail] = useState('admin@migunani.id')
+  const [password, setPassword] = useState('prototype123')
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const nextParam = searchParams.get('next')
+  const nextHref = nextParam?.startsWith('/portal/')
+    ? nextParam
+    : '/portal/dashboard'
+  const isSubmitting = status === 'loading'
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setLoginError(null)
+
+    try {
+      const user = await login({ email, password })
+      navigate(user.role === 'admin' ? nextHref : getRoleHome(user.role), {
+        replace: true,
+      })
+    } catch (error) {
+      setLoginError(getErrorMessage(error))
+    }
+  }
+
   return (
     <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-5xl items-center py-8">
       <section className="grid w-full gap-6 lg:grid-cols-[1fr_1fr]">
@@ -36,7 +67,10 @@ export function AdminPortalPage() {
         </div>
 
         <div className="flex flex-col justify-center">
-          <article className="rounded-lg border bg-card p-8 shadow-sm">
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-lg border bg-card p-8 shadow-sm"
+          >
             <span className="flex size-14 items-center justify-center rounded-md bg-deep-green text-primary-foreground">
               <ShieldCheck size={28} />
             </span>
@@ -51,11 +85,12 @@ export function AdminPortalPage() {
                 <label className="block">
                   <span className="text-xs font-bold uppercase text-foreground">Email</span>
                   <input
+                    required
                     type="email"
                     placeholder="admin@migunani.id"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
                     className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm font-semibold outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
-                    readOnly
-                    defaultValue="admin@migunani.id"
                   />
                 </label>
               </div>
@@ -63,29 +98,57 @@ export function AdminPortalPage() {
                 <label className="block">
                   <span className="text-xs font-bold uppercase text-foreground">Password</span>
                   <input
+                    required
                     type="password"
                     placeholder="••••••••"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
                     className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm font-semibold outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
-                    readOnly
-                    defaultValue="prototype123"
                   />
                 </label>
               </div>
             </div>
 
-            <Link
-              to="/portal/dashboard"
-              className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+            {loginError ? (
+              <div className="mt-5 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+                {loginError}
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Masuk sebagai Super Admin
+              {isSubmitting ? 'Memproses...' : 'Masuk sebagai Super Admin'}
               <ArrowRight size={17} />
-            </Link>
+            </button>
             <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">
-              Prototype — login tanpa backend, langsung masuk ke dashboard.
+              Login memakai endpoint backend dan sesi Sanctum.
             </p>
-          </article>
+          </form>
         </div>
       </section>
     </div>
   )
+}
+
+function getRoleHome(role: UserRole) {
+  if (role === 'admin') {
+    return '/portal/dashboard'
+  }
+
+  if (role === 'organizer') {
+    return '/organizer/dashboard'
+  }
+
+  return '/volunteer/dashboard'
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Login gagal. Periksa email dan password.'
 }

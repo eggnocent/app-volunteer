@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { EventCard, FilterBar, PageHeader } from '@/components'
 import { events, getOrganizerById, volunteerProfile } from '@/data'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getEventMatch } from '@/lib/match'
+import { mapEvent, organizerApi, publicApi, volunteerApi } from '@/services/api'
+import { useAuth } from '@/providers/useAuth'
 import type { EventCategory, EventMode } from '@/types/migunani'
 
 type EventsPageProps = {
@@ -14,6 +17,7 @@ type SortOption = 'relevant' | 'newest' | 'remaining' | 'match'
 
 export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   const [searchParams] = useSearchParams()
+  const { user } = useAuth()
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | 'Semua'>(
     'Semua',
@@ -21,9 +25,38 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   const [selectedMode, setSelectedMode] = useState<EventMode | 'Semua'>('Semua')
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [sort, setSort] = useState<SortOption>('relevant')
-  const [savedEventIds, setSavedEventIds] = useState<string[]>(
-    volunteerProfile.savedEventIds,
+  const initialResource = useMemo(
+    () => ({
+      events,
+      savedEventIds: volunteerProfile.savedEventIds,
+    }),
+    [],
   )
+  const organizerId = user?.organizerId
+  const loadEvents = useCallback(async () => {
+    const apiEvents =
+      viewer === 'organizer' && organizerId
+        ? await organizerApi.getOrganizerEvents(organizerId)
+        : await publicApi.getEvents()
+    const mappedEvents = apiEvents.map(mapEvent)
+    const savedEventIds =
+      viewer === 'volunteer'
+        ? (await volunteerApi.getSavedEvents()).map((event) => event.id)
+        : mappedEvents
+            .filter((event) => 'isSaved' in event && Boolean(event.isSaved))
+            .map((event) => event.id)
+
+    return {
+      events: mappedEvents,
+      savedEventIds,
+    }
+  }, [organizerId, viewer])
+  const {
+    data: resource,
+    error: resourceError,
+    isLoading,
+  } = useAsyncResource(loadEvents, initialResource)
+  const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>({})
   const detailPathPrefix =
     viewer === 'volunteer'
       ? '/volunteer/events'
@@ -34,7 +67,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   const filteredEvents = useMemo(() => {
     const query = search.trim().toLowerCase()
 
-    return events.filter((event) => {
+    return resource.events.filter((event) => {
       const organizer = getOrganizerById(event.organizerId)
       const matchesSearch =
         query.length === 0 ||
@@ -58,7 +91,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 
       return matchesSearch && matchesCategory && matchesMode
     })
-  }, [search, selectedCategory, selectedMode])
+  }, [resource.events, search, selectedCategory, selectedMode])
 
   const sortedEvents = useMemo(() => {
     return [...filteredEvents].sort((a, b) => {
@@ -84,12 +117,19 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
     })
   }, [filteredEvents, sort])
 
-  function toggleSaved(eventId: string) {
-    setSavedEventIds((current) =>
-      current.includes(eventId)
-        ? current.filter((id) => id !== eventId)
-        : [...current, eventId],
-    )
+  async function toggleSaved(eventId: string) {
+    const currentSaved = isEventSaved(eventId, resource.savedEventIds, savedOverrides)
+    setSavedOverrides((current) => ({ ...current, [eventId]: !currentSaved }))
+
+    try {
+      if (currentSaved) {
+        await volunteerApi.removeSavedEvent(eventId)
+      } else {
+        await volunteerApi.saveEvent(eventId)
+      }
+    } catch {
+      setSavedOverrides((current) => ({ ...current, [eventId]: currentSaved }))
+    }
   }
 
   return (
@@ -97,8 +137,18 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
       <PageHeader
         eyebrow="Explore Events"
         title="Cari event volunteer yang cocok dengan waktu, minat, dan target kontribusimu."
-        description="Gunakan filter kategori dan mode kegiatan untuk menemukan event yang paling relevan. Semua data masih statis, tapi interaksi frontend sudah dibuat seperti marketplace."
+        description="Gunakan filter kategori dan mode kegiatan untuk menemukan event yang paling relevan."
       />
+
+      {isLoading ? (
+        <ApiNotice message="Memuat event dari API..." tone="loading" />
+      ) : null}
+      {resourceError ? (
+        <ApiNotice
+          message={`Data API belum tersedia, memakai event tampilan sementara. ${resourceError}`}
+          tone="error"
+        />
+      ) : null}
 
       <FilterBar
         search={search}
@@ -114,7 +164,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <p className="text-sm font-semibold text-muted-foreground">
           Menampilkan <span className="text-foreground">{sortedEvents.length}</span>{' '}
-          dari {events.length} event
+          dari {resource.events.length} event
         </p>
         <select
           value={sort}
@@ -143,8 +193,8 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
               key={event.id}
               event={event}
               organizer={getOrganizerById(event.organizerId)}
-              saved={savedEventIds.includes(event.id)}
-              onSavedChange={toggleSaved}
+              saved={isEventSaved(event.id, resource.savedEventIds, savedOverrides)}
+              onSavedChange={viewer === 'volunteer' ? toggleSaved : undefined}
               detailPathPrefix={detailPathPrefix}
               variant={view}
               {...(viewer === 'volunteer'
@@ -161,6 +211,34 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
           </p>
         </section>
       )}
+    </div>
+  )
+}
+
+function isEventSaved(
+  eventId: string,
+  savedEventIds: string[],
+  overrides: Record<string, boolean>,
+) {
+  return overrides[eventId] ?? savedEventIds.includes(eventId)
+}
+
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={
+        tone === 'loading'
+          ? 'rounded-lg border bg-accent p-3 text-sm font-semibold text-accent-foreground'
+          : 'rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive'
+      }
+    >
+      {message}
     </div>
   )
 }

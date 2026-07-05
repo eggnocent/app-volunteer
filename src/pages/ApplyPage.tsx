@@ -10,7 +10,7 @@ import {
   Send,
   UserRoundCheck,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import {
@@ -21,9 +21,11 @@ import {
   type RegistrationStep,
 } from '@/components'
 import { getEventById, getOrganizerById, volunteerProfile } from '@/data'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate, formatEventTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
+import { mapEvent, publicApi, volunteerApi } from '@/services/api'
 import type { VolunteerRole } from '@/types/migunani'
 
 const registrationSteps: RegistrationStep[] = [
@@ -59,7 +61,18 @@ const availabilityOptions = [
 
 export function ApplyPage() {
   const { eventId } = useParams()
-  const event = eventId ? getEventById(eventId) : undefined
+  const fallbackEvent = eventId ? getEventById(eventId) : undefined
+  const loadEvent = useCallback(async () => {
+    if (!eventId) {
+      return undefined
+    }
+
+    return mapEvent(await publicApi.getEvent(eventId))
+  }, [eventId])
+  const { data: event, error: eventError, isLoading } = useAsyncResource(
+    loadEvent,
+    fallbackEvent,
+  )
   const organizer = event ? getOrganizerById(event.organizerId) : undefined
   const [currentStep, setCurrentStep] = useState(0)
   const [selectedRole, setSelectedRole] = useState<VolunteerRole | ''>(
@@ -74,6 +87,7 @@ export function ApplyPage() {
   ])
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const canContinue = useMemo(() => {
     if (currentStep === 0) {
@@ -109,17 +123,31 @@ export function ApplyPage() {
     )
   }
 
-  function goNext() {
+  async function goNext() {
     if (currentStep < registrationSteps.length - 1) {
       setCurrentStep((step) => step + 1)
       return
     }
 
+    if (!event || !selectedRole) {
+      return
+    }
+
     setIsSubmitting(true)
-    setTimeout(() => {
+    setSubmitError(null)
+
+    try {
+      await volunteerApi.applyToEvent(event.id, {
+        role: selectedRole,
+        motivation,
+        availability,
+      })
       setIsSubmitting(false)
       setSubmitted(true)
-    }, 1100)
+    } catch (error) {
+      setSubmitError(getErrorMessage(error))
+      setIsSubmitting(false)
+    }
   }
 
   function goBack() {
@@ -186,6 +214,16 @@ export function ApplyPage() {
         description="Isi pendaftaran singkat ini untuk membantu organizer memahami role, motivasi, dan kesiapan waktumu."
       />
 
+      {isLoading ? (
+        <ApiNotice message="Memuat detail event dari API..." tone="loading" />
+      ) : null}
+      {eventError ? (
+        <ApiNotice
+          message={`Detail API belum tersedia, memakai data tampilan sementara. ${eventError}`}
+          tone="error"
+        />
+      ) : null}
+
       <RegistrationStepper steps={registrationSteps} currentStep={currentStep} />
 
       <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -219,6 +257,11 @@ export function ApplyPage() {
           ) : null}
 
           <div className="mt-8 flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-between">
+            {submitError ? (
+              <div className="sm:mr-auto rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive">
+                {submitError}
+              </div>
+            ) : null}
             <button
               type="button"
               onClick={goBack}
@@ -261,6 +304,34 @@ export function ApplyPage() {
       </section>
     </div>
   )
+}
+
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={
+        tone === 'loading'
+          ? 'rounded-lg border bg-accent p-3 text-sm font-semibold text-accent-foreground'
+          : 'rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive'
+      }
+    >
+      {message}
+    </div>
+  )
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Aplikasi belum bisa dikirim.'
 }
 
 function RoleStep({

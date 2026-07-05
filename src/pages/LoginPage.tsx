@@ -1,8 +1,18 @@
 import { ArrowRight, Building2, HeartHandshake, ShieldCheck } from 'lucide-react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+
+import { useAuth } from '@/providers/useAuth'
+import type { FormEvent } from 'react'
+import type { UserRole } from '@/types/migunani'
 
 export function LoginPage() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { login, status } = useAuth()
+  const [email, setEmail] = useState('nadira.putri@mail.com')
+  const [password, setPassword] = useState('prototype123')
+  const [loginError, setLoginError] = useState<string | null>(null)
   const nextParam = searchParams.get('next')
   const nextHref = nextParam?.startsWith('/volunteer/')
     ? nextParam
@@ -11,6 +21,21 @@ export function LoginPage() {
     nextHref === '/volunteer/dashboard'
       ? '/register'
       : `/register?next=${encodeURIComponent(nextHref)}`
+  const isSubmitting = status === 'loading'
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setLoginError(null)
+
+    try {
+      const user = await login({ email, password })
+      navigate(user.role === 'volunteer' ? nextHref : getRoleHome(user.role), {
+        replace: true,
+      })
+    } catch (error) {
+      setLoginError(getErrorMessage(error))
+    }
+  }
 
   return (
     <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-5xl items-center py-8">
@@ -48,7 +73,10 @@ export function LoginPage() {
         </div>
 
         <div className="flex flex-col justify-center">
-          <article className="rounded-lg border bg-card p-8 shadow-sm">
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-lg border bg-card p-8 shadow-sm"
+          >
             <span className="flex size-14 items-center justify-center rounded-md bg-accent text-accent-foreground">
               <HeartHandshake size={28} />
             </span>
@@ -62,36 +90,47 @@ export function LoginPage() {
               <label className="block">
                 <span className="text-xs font-bold uppercase text-muted-foreground">Email</span>
                 <input
+                  required
                   type="email"
                   placeholder="relawan@migunani.id"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                   className="mt-1.5 h-11 w-full rounded-md border bg-background px-3 text-sm font-semibold outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  readOnly
-                  defaultValue="nadira.putri@mail.com"
                 />
               </label>
               <label className="block">
                 <span className="text-xs font-bold uppercase text-muted-foreground">Password</span>
                 <input
+                  required
                   type="password"
                   placeholder="••••••••"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
                   className="mt-1.5 h-11 w-full rounded-md border bg-background px-3 text-sm font-semibold outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  readOnly
-                  defaultValue="prototype123"
                 />
               </label>
             </div>
 
-            <Link
-              to={nextHref}
-              className="mt-8 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+            {loginError ? (
+              <div className="mt-5 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+                {loginError}
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="mt-8 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {nextHref === '/volunteer/dashboard'
+              {isSubmitting
+                ? 'Memproses...'
+                : nextHref === '/volunteer/dashboard'
                 ? 'Masuk sebagai Relawan'
                 : 'Masuk dan lanjut daftar event'}
               <ArrowRight size={17} />
-            </Link>
+            </button>
             <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">
-              Prototype — login tanpa backend, langsung masuk ke dashboard.
+              Login memakai endpoint backend dan sesi Sanctum.
             </p>
             <p className="mt-3 text-center text-xs font-semibold text-muted-foreground">
               Belum punya akun relawan?{' '}
@@ -102,9 +141,29 @@ export function LoginPage() {
                 Daftar di sini
               </Link>
             </p>
-          </article>
+          </form>
         </div>
       </section>
     </div>
   )
+}
+
+function getRoleHome(role: UserRole) {
+  if (role === 'admin') {
+    return '/portal/dashboard'
+  }
+
+  if (role === 'organizer') {
+    return '/organizer/dashboard'
+  }
+
+  return '/volunteer/dashboard'
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Login gagal. Periksa email dan password.'
 }

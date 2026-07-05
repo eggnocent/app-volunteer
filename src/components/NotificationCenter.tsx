@@ -7,9 +7,12 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { cn } from '@/lib/utils'
+import { notificationApi } from '@/services/api'
+import type { ApiNotification } from '@/services/api'
 
 type NotificationCenterProps = {
   area: 'admin' | 'volunteer' | 'organizer'
@@ -26,13 +29,48 @@ const notificationIcons = {
 export function NotificationCenter({ area }: NotificationCenterProps) {
   const [open, setOpen] = useState(false)
   const [readIds, setReadIds] = useState<string[]>([])
-  const notifications = useMemo(() => getNotifications(area), [area])
+  const fallbackNotifications = useMemo(() => getFallbackNotifications(area), [area])
+  const loadNotifications = useCallback(
+    () => notificationApi.getNotifications(),
+    [],
+  )
+  const { data: apiNotifications } = useAsyncResource(
+    loadNotifications,
+    fallbackNotifications,
+  )
+  const notifications = apiNotifications.length > 0 ? apiNotifications : fallbackNotifications
   const unreadCount = notifications.filter(
-    (notification) => !readIds.includes(notification.id),
+    (notification) => !notification.readAt && !readIds.includes(notification.id),
   ).length
 
-  function markAsRead(id: string) {
+  async function markAsRead(id: string) {
+    const wasRead = readIds.includes(id)
     setReadIds((current) => (current.includes(id) ? current : [...current, id]))
+
+    if (wasRead) {
+      return
+    }
+
+    try {
+      await notificationApi.markNotificationRead(id)
+    } catch {
+      setReadIds((current) => current.filter((readId) => readId !== id))
+    }
+  }
+
+  async function markAllAsRead() {
+    const unreadIds = notifications
+      .filter((notification) => !notification.readAt)
+      .map((notification) => notification.id)
+    setReadIds((current) => Array.from(new Set([...current, ...unreadIds])))
+
+    try {
+      await notificationApi.markAllNotificationsRead()
+    } catch {
+      setReadIds((current) =>
+        current.filter((id) => !unreadIds.includes(id)),
+      )
+    }
   }
 
   return (
@@ -72,17 +110,26 @@ export function NotificationCenter({ area }: NotificationCenterProps) {
               <X size={16} />
             </button>
           </div>
+          {unreadCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => void markAllAsRead()}
+              className="mx-4 mt-3 inline-flex h-9 items-center justify-center rounded-md border bg-card px-3 text-xs font-bold transition hover:bg-muted"
+            >
+              Tandai semua dibaca
+            </button>
+          ) : null}
 
           <div className="max-h-[420px] divide-y overflow-y-auto">
             {notifications.map((notification) => {
               const Icon = notificationIcons[notification.kind]
-              const read = readIds.includes(notification.id)
+              const read = Boolean(notification.readAt) || readIds.includes(notification.id)
 
               return (
                 <button
                   key={notification.id}
                   type="button"
-                  onClick={() => markAsRead(notification.id)}
+                  onClick={() => void markAsRead(notification.id)}
                   className={cn(
                     'grid w-full grid-cols-[auto_1fr] gap-3 p-4 text-left transition hover:bg-muted',
                     !read && 'bg-accent/55',
@@ -131,7 +178,7 @@ function getAreaLabel(area: NotificationCenterProps['area']) {
   return 'relawan'
 }
 
-function getNotifications(area: NotificationCenterProps['area']) {
+function getFallbackNotifications(area: NotificationCenterProps['area']): ApiNotification[] {
   if (area === 'admin') {
     return [
       {

@@ -15,10 +15,12 @@ import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { OrganizerApplicantsPage } from '@/pages/OrganizerApplicantsPage'
+import { OrganizerCertificatesPage } from '@/pages/OrganizerCertificatesPage'
 import { OrganizerDashboardPage } from '@/pages/OrganizerDashboardPage'
 import { OrganizerLoginPage } from '@/pages/OrganizerLoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { VolunteerDashboardPage } from '@/pages/VolunteerDashboardPage'
+import { ProtectedRoute } from '@/routes/ProtectedRoute'
 
 export function AppRoutes() {
   return (
@@ -39,7 +41,13 @@ export function AppRoutes() {
       </Route>
 
       {/* Super Admin area — /portal/* */}
-      <Route element={<DashboardLayout area="admin" />}>
+      <Route
+        element={
+          <ProtectedRoute roles={['admin']} loginPath="/portal">
+            <DashboardLayout area="admin" />
+          </ProtectedRoute>
+        }
+      >
         <Route path="portal/dashboard" element={<AdminDashboardPage />} />
         <Route path="portal/users" element={<AdminUsersPage />} />
         <Route path="portal/events" element={<AdminEventsPage />} />
@@ -47,7 +55,13 @@ export function AppRoutes() {
       </Route>
 
       {/* Volunteer area — /volunteer/* */}
-      <Route element={<DashboardLayout area="volunteer" />}>
+      <Route
+        element={
+          <ProtectedRoute roles={['volunteer']} loginPath="/login">
+            <DashboardLayout area="volunteer" />
+          </ProtectedRoute>
+        }
+      >
         <Route path="volunteer/dashboard" element={<VolunteerDashboardPage />} />
         <Route path="volunteer/events" element={<EventsPage viewer="volunteer" />} />
         <Route path="volunteer/apply/:eventId" element={<ApplyPage />} />
@@ -58,15 +72,23 @@ export function AppRoutes() {
       </Route>
 
       {/* Organizer area — /organizer/* */}
-      <Route element={<DashboardLayout area="organizer" />}>
+      <Route
+        element={
+          <ProtectedRoute roles={['organizer']} loginPath="/organizer">
+            <DashboardLayout area="organizer" />
+          </ProtectedRoute>
+        }
+      >
         <Route path="organizer/dashboard" element={<OrganizerDashboardPage />} />
         <Route path="organizer/applicants" element={<OrganizerApplicantsPage />} />
+        <Route path="organizer/certificates" element={<OrganizerCertificatesPage />} />
         <Route path="organizer/events" element={<EventsPage viewer="organizer" />} />
         <Route
           path="organizer/events/:slug"
           element={<EventDetailPage viewer="organizer" />}
         />
         <Route path="organizer/create" element={<CreateEventPage />} />
+        <Route path="organizer/events/:eventId/edit" element={<CreateEventPage pageMode="edit" />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

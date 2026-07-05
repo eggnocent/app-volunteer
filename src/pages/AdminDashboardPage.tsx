@@ -8,6 +8,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
+import { useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
 import { PageHeader, StatsCard } from '@/components'
@@ -17,18 +18,39 @@ import {
   organizers,
   platformUsers,
 } from '@/data'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate } from '@/lib/format'
+import { adminApi, mapEvent, mapOrganizer } from '@/services/api'
 
 const statIcons = [Users, CalendarDays, Building2, Clock3]
 const statTones = ['green', 'yellow', 'dark', 'neutral'] as const
 
 export function AdminDashboardPage() {
-  const recentUsers = [...platformUsers]
+  const fallbackResource = useMemo(
+    () => ({ stats: adminStats, users: platformUsers, events, organizers }),
+    [],
+  )
+  const loadDashboard = useCallback(async () => {
+    const dashboard = await adminApi.getAdminDashboard()
+
+    return {
+      stats: dashboard.stats,
+      users: dashboard.users,
+      events: dashboard.events.map(mapEvent),
+      organizers: dashboard.organizers.map(mapOrganizer),
+    }
+  }, [])
+  const {
+    data: resource,
+    error: dashboardError,
+    isLoading,
+  } = useAsyncResource(loadDashboard, fallbackResource)
+  const recentUsers = [...resource.users]
     .sort((a, b) => b.joinedAt.localeCompare(a.joinedAt))
     .slice(0, 5)
 
-  const activeEvents = events.filter((event) => event.status !== 'Closed')
-  const verifiedOrganizers = organizers.filter((org) => org.verified)
+  const activeEvents = resource.events.filter((event) => event.status !== 'Closed')
+  const verifiedOrganizers = resource.organizers.filter((org) => org.verified)
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
@@ -38,8 +60,18 @@ export function AdminDashboardPage() {
         description="Pantau statistik platform, kelola pengguna, event, dan organizer dari satu dashboard terpusat."
       />
 
+      {isLoading ? (
+        <ApiNotice message="Memuat dashboard admin dari API..." tone="loading" />
+      ) : null}
+      {dashboardError ? (
+        <ApiNotice
+          message={`Data API belum tersedia, memakai data tampilan sementara. ${dashboardError}`}
+          tone="error"
+        />
+      ) : null}
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {adminStats.map((stat, index) => (
+        {resource.stats.map((stat, index) => (
           <StatsCard
             key={stat.id}
             label={stat.label}
@@ -117,7 +149,7 @@ export function AdminDashboardPage() {
             <p className="mt-2 text-sm leading-6 text-primary-foreground/78">
               {activeEvents.length} event aktif dengan{' '}
               {verifiedOrganizers.length} organizer terverifikasi dari total{' '}
-              {organizers.length} organizer.
+              {resource.organizers.length} organizer.
             </p>
             <div className="mt-5 space-y-3">
               <HealthRow
@@ -126,11 +158,11 @@ export function AdminDashboardPage() {
               />
               <HealthRow
                 label="Organizer verified"
-                value={`${verifiedOrganizers.length}/${organizers.length}`}
+                value={`${verifiedOrganizers.length}/${resource.organizers.length}`}
               />
               <HealthRow
                 label="Total pengguna"
-                value={`${platformUsers.length} user`}
+                value={`${resource.users.length} user`}
               />
             </div>
           </article>
@@ -168,6 +200,26 @@ export function AdminDashboardPage() {
           </article>
         </aside>
       </section>
+    </div>
+  )
+}
+
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={
+        tone === 'loading'
+          ? 'rounded-lg border bg-accent p-3 text-sm font-semibold text-accent-foreground'
+          : 'rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive'
+      }
+    >
+      {message}
     </div>
   )
 }

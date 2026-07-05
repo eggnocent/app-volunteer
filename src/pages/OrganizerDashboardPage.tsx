@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
+import { useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
@@ -29,7 +30,10 @@ import {
   volunteerApplications,
   volunteerProfile,
 } from '@/data'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate, getFillPercentage } from '@/lib/format'
+import { mapApplication, mapEvent, mapOrganizer, organizerApi } from '@/services/api'
+import { useAuth } from '@/providers/useAuth'
 import type { EventCategory } from '@/types/migunani'
 
 const activeOrganizerId = 'org-aksara-muda'
@@ -43,13 +47,41 @@ const demandCategories: EventCategory[] = [
 ]
 
 export function OrganizerDashboardPage() {
-  const organizer = getOrganizerById(activeOrganizerId) ?? organizers[0]
-  const organizerEvents = getOrganizerEvents(organizer.id)
-  const visibleEvents = organizerEvents.length > 0 ? organizerEvents : events.slice(0, 4)
-  const applicantRows = volunteerApplications
+  const { user } = useAuth()
+  const fallbackOrganizer = getOrganizerById(activeOrganizerId) ?? organizers[0]
+  const fallbackEvents = getOrganizerEvents(fallbackOrganizer.id)
+  const fallbackResource = useMemo(
+    () => ({
+      organizer: fallbackOrganizer,
+      events: fallbackEvents.length > 0 ? fallbackEvents : events.slice(0, 4),
+      applications: volunteerApplications,
+      metrics: organizerMetrics,
+    }),
+    [fallbackEvents, fallbackOrganizer],
+  )
+  const organizerId = user?.organizerId ?? fallbackOrganizer.id
+  const loadDashboard = useCallback(async () => {
+    const dashboard = await organizerApi.getOrganizerDashboard(organizerId)
+
+    return {
+      organizer: mapOrganizer(dashboard.organizer),
+      events: dashboard.events.map(mapEvent),
+      applications: dashboard.applications.map(mapApplication),
+      metrics: dashboard.metrics ?? organizerMetrics,
+    }
+  }, [organizerId])
+  const {
+    data: resource,
+    error: dashboardError,
+    isLoading,
+  } = useAsyncResource(loadDashboard, fallbackResource)
+  const { organizer } = resource
+  const visibleEvents = resource.events
+  const applicantRows = resource.applications
     .map((application) => ({
       application,
-      event: getEventById(application.eventId),
+      event: visibleEvents.find((event) => event.id === application.eventId) ??
+        getEventById(application.eventId),
     }))
     .filter((row) => row.event)
 
@@ -70,9 +102,19 @@ export function OrganizerDashboardPage() {
         }
       />
 
+      {isLoading ? (
+        <ApiNotice message="Memuat dashboard organizer dari API..." tone="loading" />
+      ) : null}
+      {dashboardError ? (
+        <ApiNotice
+          message={`Data API belum tersedia, memakai data tampilan sementara. ${dashboardError}`}
+          tone="error"
+        />
+      ) : null}
+
       <section className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {organizerMetrics.map((metric, index) => (
+          {resource.metrics.map((metric, index) => (
             <StatsCard
               key={metric.id}
               label={metric.label}
@@ -127,6 +169,7 @@ export function OrganizerDashboardPage() {
                   key={event.id}
                   event={event}
                   detailPathPrefix="/organizer/events"
+                  canEdit
                 />
               ))}
             </div>
@@ -242,6 +285,26 @@ export function OrganizerDashboardPage() {
           </section>
         </aside>
       </section>
+    </div>
+  )
+}
+
+function ApiNotice({
+  tone,
+  message,
+}: {
+  tone: 'loading' | 'error'
+  message: string
+}) {
+  return (
+    <div
+      className={
+        tone === 'loading'
+          ? 'rounded-lg border bg-accent p-3 text-sm font-semibold text-accent-foreground'
+          : 'rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive'
+      }
+    >
+      {message}
     </div>
   )
 }
