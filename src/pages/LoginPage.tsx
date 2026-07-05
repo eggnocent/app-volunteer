@@ -51,11 +51,12 @@ export function LoginPage() {
             Login Migunani
           </p>
           <h1 className="mt-3 font-heading text-4xl font-extrabold leading-tight sm:text-5xl">
-            Masuk sekali, dashboard mengikuti role akun.
+            Satu akses untuk semua aktivitas Migunani.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-8 text-primary-foreground/78">
-            Backend memvalidasi akun dan mengembalikan role. Setelah login,
-            relawan, organizer, atau admin diarahkan ke workspace masing-masing.
+            Kelola perjalananmu sebagai relawan, organizer, atau admin dari akun
+            yang sama. Setelah masuk, kamu akan diarahkan ke ruang kerja yang
+            sesuai dengan aksesmu.
           </p>
           <div className="mt-8 space-y-3">
             <Link
@@ -85,8 +86,8 @@ export function LoginPage() {
             </span>
             <h2 className="mt-6 font-heading text-3xl font-extrabold">Login Akun</h2>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              Gunakan email dan password akun Migunani. Role akun akan menentukan
-              dashboard tujuan setelah sesi berhasil dibuat.
+              Gunakan email dan password yang terdaftar untuk melanjutkan ke
+              dashboard Migunani.
             </p>
 
             <div className="mt-8 space-y-4">
@@ -133,7 +134,7 @@ export function LoginPage() {
               <ArrowRight size={17} />
             </button>
             <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">
-              Login memakai endpoint backend dan sesi Sanctum.
+              Akses akunmu dengan aman untuk melanjutkan aktivitas di Migunani.
             </p>
             {canRegister ? (
               <p className="mt-3 text-center text-xs font-semibold text-muted-foreground">
