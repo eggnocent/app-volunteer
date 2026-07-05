@@ -11,7 +11,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const { login, status } = useAuth()
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('prototype123')
+  const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
   const nextParam = searchParams.get('next')
   const nextHref = getSafeNextHref(nextParam)
