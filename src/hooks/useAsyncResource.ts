@@ -42,5 +42,5 @@ function getErrorMessage(error: unknown) {
     return error.message
   }
 
-  return 'Data belum bisa dimuat dari API.'
+  return 'Data belum bisa dimuat.'
 }

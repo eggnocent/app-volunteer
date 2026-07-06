@@ -70,17 +70,19 @@ export function EventCard({
         </div>
       </Link>
 
-      <button
-        type="button"
-        onClick={() => onSavedChange?.(event.id)}
-        className={cn(
-          'absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-md border bg-card/90 text-foreground shadow-sm backdrop-blur transition hover:bg-secondary hover:text-secondary-foreground',
-          saved && 'bg-secondary text-secondary-foreground',
-        )}
-        aria-label={saved ? 'Hapus dari event tersimpan' : 'Simpan event'}
-      >
-        <Bookmark size={16} fill={saved ? 'currentColor' : 'none'} />
-      </button>
+      {onSavedChange ? (
+        <button
+          type="button"
+          onClick={() => onSavedChange(event.id)}
+          className={cn(
+            'absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-md border bg-card/90 text-foreground shadow-sm backdrop-blur transition hover:bg-secondary hover:text-secondary-foreground',
+            saved && 'bg-secondary text-secondary-foreground',
+          )}
+          aria-label={saved ? 'Hapus dari event tersimpan' : 'Simpan event'}
+        >
+          <Bookmark size={16} fill={saved ? 'currentColor' : 'none'} />
+        </button>
+      ) : null}
 
       <div className="flex min-w-0 flex-col gap-4 p-5">
         <div className="space-y-3">

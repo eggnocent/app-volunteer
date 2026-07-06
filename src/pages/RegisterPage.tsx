@@ -77,6 +77,9 @@ export function RegisterPage({ role }: RegisterPageProps) {
       : isOrganizer
         ? '/organizer/dashboard'
         : '/volunteer/dashboard'
+  const dashboardCtaLabel = dashboardHref.startsWith('/volunteer/apply/')
+    ? 'Lanjutkan pendaftaran'
+    : 'Masuk ke dashboard'
   const loginHref = isOrganizer
     ? '/?next=%2Forganizer%2Fdashboard'
     : nextParam?.startsWith('/volunteer/')
@@ -148,8 +151,8 @@ export function RegisterPage({ role }: RegisterPageProps) {
               Akun {isOrganizer ? 'organizer' : 'relawan'} siap digunakan.
             </h1>
             <p className="mt-4 max-w-2xl leading-7 text-primary-foreground/78">
-              Akunmu sudah aktif. Kamu bisa langsung melanjutkan ke dashboard
-              untuk mulai mengelola aktivitas Migunani.
+              Akunmu sudah aktif. Kamu bisa langsung melanjutkan aktivitas
+              Migunani sesuai tujuanmu.
             </p>
           </div>
           <div className="flex flex-col gap-3 p-6 sm:flex-row">
@@ -157,7 +160,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
               to={dashboardHref}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
             >
-              Masuk ke dashboard
+              {dashboardCtaLabel}
               <ArrowRight size={17} />
             </Link>
             <Link

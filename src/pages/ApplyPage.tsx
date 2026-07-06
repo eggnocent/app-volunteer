@@ -187,7 +187,7 @@ export function ApplyPage() {
               <ArrowRight size={17} />
             </Link>
             <Link
-              to="/events"
+              to="/volunteer/events"
               className="inline-flex h-11 items-center justify-center rounded-md border bg-card px-5 text-sm font-bold transition hover:bg-muted"
             >
               Cari event lain
@@ -201,7 +201,7 @@ export function ApplyPage() {
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <Link
-        to={`/events/${event.slug}`}
+        to={`/volunteer/events/${event.slug}`}
         className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition hover:text-primary"
       >
         <ArrowLeft size={16} />

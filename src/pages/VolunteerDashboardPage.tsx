@@ -235,7 +235,7 @@ export function VolunteerDashboardPage() {
         className="border-0 bg-transparent p-0 shadow-none"
         action={
           <Link
-            to="/events"
+            to="/volunteer/events"
             className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
           >
             Cari event baru
@@ -653,7 +653,7 @@ function ApplicationsTab({
                   </button>
                 )}
                 <Link
-                  to={event ? `/volunteer/events/${event.slug}` : '/events'}
+                  to={event ? `/volunteer/events/${event.slug}` : '/volunteer/events'}
                   className="inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted"
                 >
                   Lihat event

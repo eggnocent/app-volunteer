@@ -1,5 +1,5 @@
 import { ArrowRight, Building2, HeartHandshake } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '@/providers/useAuth'
@@ -9,7 +9,7 @@ import type { UserRole } from '@/types/migunani'
 export function LoginPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { login, status } = useAuth()
+  const { login, refresh, status, user } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
@@ -25,6 +25,20 @@ export function LoginPage() {
     : 'Belum punya akun relawan?'
   const canRegister = !nextHref.startsWith('/portal/')
   const isSubmitting = status === 'loading'
+
+  useEffect(() => {
+    if (status === 'idle') {
+      void refresh()
+    }
+  }, [refresh, status])
+
+  useEffect(() => {
+    if (status === 'authenticated' && user) {
+      navigate(isNextAllowedForRole(nextHref, user.role) ? nextHref : getRoleHome(user.role), {
+        replace: true,
+      })
+    }
+  }, [navigate, nextHref, status, user])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
