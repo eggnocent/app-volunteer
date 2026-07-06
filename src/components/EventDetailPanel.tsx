@@ -33,7 +33,7 @@ export function EventDetailPanel({ event, organizer }: EventDetailPanelProps) {
         <DetailItem
           icon={BadgeCheck}
           label="Organizer"
-          value={organizer ? `${organizer.name} · ${organizer.responseTime}` : 'Organizer komunitas'}
+          value={organizer ? `${organizer.name} · Respons ${organizer.responseTime}` : 'Organizer komunitas'}
         />
       </div>
 

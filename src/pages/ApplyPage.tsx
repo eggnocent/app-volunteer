@@ -23,6 +23,7 @@ import {
 } from '@/components'
 import { getEventById, getOrganizerById } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
+import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate, formatEventTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import {
@@ -37,7 +38,7 @@ import type { VolunteerProfile, VolunteerRole } from '@/types/migunani'
 const registrationSteps: RegistrationStep[] = [
   {
     id: 'role',
-    label: 'Role',
+    label: 'Peran',
     description: 'Pilih kontribusi',
   },
   {
@@ -235,7 +236,10 @@ export function ApplyPage() {
             </p>
           </div>
           <div className="grid gap-4 p-6 sm:grid-cols-3">
-            <SummaryTile label="Role" value={selectedRole} />
+            <SummaryTile
+              label="Peran"
+              value={selectedRole ? getVolunteerRoleLabel(selectedRole) : 'Belum dipilih'}
+            />
             <SummaryTile label="Organizer" value={organizer?.name ?? 'Organizer'} />
             <SummaryTile label="Tanggal" value={formatDate(event.date)} />
           </div>
@@ -407,8 +411,8 @@ function RoleStep({
     <div>
       <StepTitle
         icon={<UserRoundCheck size={20} />}
-        title="Pilih role volunteer"
-        description="Pilih role yang paling sesuai dengan skill dan energi yang ingin kamu bawa."
+        title="Pilih peran relawan"
+        description="Pilih peran yang paling sesuai dengan skill dan energi yang ingin kamu bawa."
       />
       <div className="mt-6 grid gap-3 md:grid-cols-2">
         {roles.map((role) => (
@@ -422,7 +426,9 @@ function RoleStep({
             )}
           >
             <span className="flex items-center justify-between gap-3">
-              <span className="font-heading text-lg font-extrabold">{role}</span>
+              <span className="font-heading text-lg font-extrabold">
+                {getVolunteerRoleLabel(role)}
+              </span>
               {selectedRole === role ? (
                 <CheckCircle2 size={19} className="text-primary" />
               ) : null}
@@ -532,7 +538,10 @@ function ReviewStep({
       />
       <div className="mt-6 space-y-4">
         <ReviewBlock label="Event" value={eventTitle} />
-        <ReviewBlock label="Role" value={selectedRole || 'Belum dipilih'} />
+        <ReviewBlock
+          label="Peran"
+          value={selectedRole ? getVolunteerRoleLabel(selectedRole) : 'Belum dipilih'}
+        />
         <ReviewBlock label="Motivasi" value={motivation} />
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs font-bold uppercase text-muted-foreground">Ketersediaan</p>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { CategoryChip } from '@/components/CategoryChip'
 import { StatusBadge } from '@/components/StatusBadge'
+import { getEventModeLabel } from '@/lib/display-labels'
 import { formatDate, formatEventTime, getFillPercentage } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Organizer, VolunteerEvent } from '@/types/migunani'
@@ -110,7 +111,7 @@ export function EventCard({
         <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
           <MetaItem icon={CalendarDays} label={formatDate(event.date)} />
           <MetaItem icon={Clock} label={formatEventTime(event.startTime, event.endTime)} className="hidden sm:flex" />
-          <MetaItem icon={MapPin} label={`${event.city} · ${event.mode}`} />
+          <MetaItem icon={MapPin} label={`${event.city} · ${getEventModeLabel(event.mode)}`} />
           <MetaItem icon={Users} label={`${event.registered}/${event.quota} relawan`} />
         </div>
 

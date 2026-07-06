@@ -361,13 +361,13 @@ export function RegisterPage({ role }: RegisterPageProps) {
           <div className="mt-8 space-y-3">
             <FeatureRow
               icon={<BadgeCheck size={15} />}
-              label={isOrganizer ? 'Publish event volunteer' : 'Simpan riwayat aplikasi'}
+              label={isOrganizer ? 'Publikasikan event relawan' : 'Simpan riwayat aplikasi'}
             />
             <FeatureRow
               icon={isOrganizer ? <Building2 size={15} /> : <HeartHandshake size={15} />}
               label={
                 isOrganizer
-                  ? 'Kelola applicant dan performa event'
+                  ? 'Kelola pendaftar dan performa event'
                   : 'Kumpulkan jam kontribusi dan sertifikat'
               }
             />

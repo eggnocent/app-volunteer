@@ -1,8 +1,6 @@
 import {
   Building2,
   CheckCircle2,
-  MapPin,
-  MessageCircle,
   Search,
   ShieldCheck,
   Star,
@@ -96,9 +94,9 @@ export function AdminOrganizersPage() {
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <PageHeader
-        eyebrow="Admin / Organizers"
-        title="Kelola organizer platform."
-        description="Pantau status verifikasi, performa, dan event yang dikelola oleh setiap organizer di Migunani."
+        eyebrow="Admin platform"
+        title="Kelola organizer"
+        description="Pantau verifikasi, performa, dan jumlah event yang dikelola setiap organizer."
       />
 
       {isLoading ? (
@@ -165,85 +163,86 @@ export function AdminOrganizersPage() {
       </section>
 
       <p className="text-sm font-semibold text-muted-foreground">
-        Menampilkan <span className="text-foreground">{filteredOrganizers.length}</span>{' '}
-        dari {visibleOrganizers.length} organizer
+        <span className="text-foreground">{filteredOrganizers.length}</span> dari{' '}
+        {visibleOrganizers.length} organizer ditampilkan
       </p>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        {filteredOrganizers.map((org) => {
-          const orgEvents = getOrganizerEvents(org.id)
-          const isPending = pendingOrganizerIds.includes(org.id)
+      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="grid grid-cols-[1fr_auto] gap-4 border-b bg-muted px-4 py-3 text-xs font-bold uppercase text-muted-foreground lg:grid-cols-[1fr_150px_120px_140px_180px]">
+          <span>Organizer</span>
+          <span className="hidden lg:block">Kota</span>
+          <span className="hidden lg:block">Rating</span>
+          <span className="hidden lg:block">Event</span>
+          <span>Verifikasi</span>
+        </div>
+        <div className="divide-y">
+          {filteredOrganizers.map((org) => {
+            const orgEvents = getOrganizerEvents(org.id)
+            const isPending = pendingOrganizerIds.includes(org.id)
 
-          return (
-            <article
-              key={org.id}
-              className="rounded-lg border bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="flex items-center gap-4">
-                <span className="flex size-14 shrink-0 items-center justify-center rounded-md bg-accent font-heading text-xl font-extrabold text-accent-foreground">
-                  {org.logoInitial}
-                </span>
+            return (
+              <article
+                key={org.id}
+                className="grid grid-cols-[1fr_auto] gap-4 px-4 py-4 lg:grid-cols-[1fr_150px_120px_140px_180px] lg:items-center"
+              >
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-heading text-xl font-extrabold">
-                      {org.name}
-                    </h2>
-                    {org.verified ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-accent-foreground">
-                        <CheckCircle2 size={11} />
-                        Verified
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
-                        Unverified
-                      </span>
-                    )}
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-accent font-heading text-base font-extrabold text-accent-foreground">
+                      {org.logoInitial}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <h2 className="truncate font-heading text-base font-extrabold">
+                          {org.name}
+                        </h2>
+                        {org.verified ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-accent-foreground">
+                            <CheckCircle2 size={11} />
+                            Terverifikasi
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                            Belum verifikasi
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 truncate text-sm text-muted-foreground">
+                        {org.type} · {org.city}
+                      </p>
+                    </div>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {org.type}
-                  </p>
                 </div>
-              </div>
-
-              <div className="mt-5 grid gap-2 text-sm font-semibold text-muted-foreground">
-                <span className="inline-flex items-center gap-2">
-                  <MapPin size={15} className="text-primary" />
+                <span className="hidden text-sm font-semibold text-muted-foreground lg:block">
                   {org.city}
                 </span>
-                <span className="inline-flex items-center gap-2">
-                  <Star size={15} className="text-secondary" />
-                  Rating {org.rating}
+                <span className="hidden text-sm font-semibold text-muted-foreground lg:block">
+                  {org.rating}
                 </span>
-                <span className="inline-flex items-center gap-2">
-                  <MessageCircle size={15} className="text-primary" />
-                  Response time {org.responseTime}
+                <span className="hidden text-sm font-semibold text-muted-foreground lg:block">
+                  {org.totalEvents || orgEvents.length} event
                 </span>
-                <span className="inline-flex items-center gap-2">
-                  <Building2 size={15} className="text-primary" />
-                  {org.totalEvents || orgEvents.length} event di platform
-                </span>
-              </div>
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() =>
-                  setPendingVerification({
-                    organizerId: org.id,
-                    organizerName: org.name,
-                    verified: !org.verified,
-                  })
-                }
-                className="mt-5 inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isPending
-                  ? 'Menyimpan...'
-                  : org.verified
-                    ? 'Tandai unverified'
-                    : 'Verifikasi organizer'}
-              </button>
-            </article>
-          )
-        })}
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() =>
+                    setPendingVerification({
+                      organizerId: org.id,
+                      organizerName: org.name,
+                      verified: !org.verified,
+                    })
+                  }
+                  className="inline-flex h-9 items-center justify-center rounded-md border bg-card px-3 text-xs font-bold transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPending
+                    ? 'Menyimpan...'
+                    : org.verified
+                      ? 'Cabut verifikasi'
+                      : 'Verifikasi organizer'}
+                </button>
+              </article>
+            )
+          })}
+        </div>
       </section>
 
       {filteredOrganizers.length === 0 ? (

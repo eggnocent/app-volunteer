@@ -41,14 +41,14 @@ export function OrganizerLoginPage() {
             M
           </span>
           <p className="mt-8 text-sm font-bold uppercase text-primary-foreground/70">
-            Login Organizer
+            Masuk Organizer
           </p>
           <h1 className="mt-3 font-heading text-4xl font-extrabold leading-tight sm:text-5xl">
             Masuk sebagai organizer Migunani.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-8 text-primary-foreground/78">
-            Akses dashboard organizer untuk publish event volunteer, kelola
-            applicant, pantau keterisian kuota, dan siapkan kegiatan berikutnya.
+            Akses dashboard organizer untuk mempublikasikan event relawan, kelola
+            pendaftar, pantau keterisian kuota, dan siapkan kegiatan berikutnya.
           </p>
           <div className="mt-8 space-y-3">
             <Link
@@ -76,7 +76,7 @@ export function OrganizerLoginPage() {
             </span>
             <h2 className="mt-6 font-heading text-3xl font-extrabold">Organizer</h2>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              Publish event volunteer, review dan kelola pendaftar, pantau keterisian
+              Publikasikan event relawan, tinjau dan kelola pendaftar, pantau keterisian
               kuota, dan evaluasi performa kegiatan dari satu dashboard.
             </p>
 

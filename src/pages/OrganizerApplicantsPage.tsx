@@ -20,6 +20,7 @@ import {
   volunteerProfile,
 } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
+import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate } from '@/lib/format'
 import { mapApplication, mapEvent, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
@@ -200,6 +201,7 @@ export function OrganizerApplicantsPage() {
           applicantIdentity?.name ?? '',
           applicantIdentity?.profileLine ?? '',
           application.role,
+          getVolunteerRoleLabel(application.role),
           application.status,
           event?.title ?? '',
           event?.category ?? '',
@@ -341,7 +343,7 @@ export function OrganizerApplicantsPage() {
         <div className="grid grid-cols-[1fr_auto] gap-4 border-b bg-muted px-4 py-3 text-xs font-bold uppercase text-muted-foreground lg:grid-cols-[1.2fr_1fr_150px_130px_120px_150px]">
           <span>Pendaftar</span>
           <span className="hidden lg:block">Event</span>
-          <span className="hidden lg:block">Role</span>
+          <span className="hidden lg:block">Peran</span>
           <span className="hidden lg:block">Dikirim</span>
           <span>Status</span>
           <span className="text-right lg:text-left">Tindakan</span>
@@ -381,7 +383,7 @@ export function OrganizerApplicantsPage() {
                   </div>
                 </div>
                 <span className="hidden text-sm font-semibold text-muted-foreground lg:block">
-                  {application.role}
+                  {getVolunteerRoleLabel(application.role)}
                 </span>
                 <span className="hidden text-sm font-semibold text-muted-foreground lg:block">
                   {formatDate(application.submittedAt)}
@@ -629,7 +631,7 @@ function ApplicantDetailModal({
           />
         ) : null}
         <DetailBlock label="Event" value={event?.title ?? 'Event Migunani'} />
-        <DetailBlock label="Role dipilih" value={application.role} />
+        <DetailBlock label="Peran dipilih" value={getVolunteerRoleLabel(application.role)} />
         <div>
           <p className="text-xs font-bold uppercase text-muted-foreground">
             Motivasi
@@ -778,7 +780,7 @@ function getErrorMessage(error: unknown) {
     return error.message
   }
 
-  return 'Aksi applicant belum bisa diproses.'
+  return 'Aksi pendaftar belum bisa diproses.'
 }
 
 function ApiNotice({

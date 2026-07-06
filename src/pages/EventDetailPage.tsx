@@ -3,10 +3,13 @@ import {
   ArrowRight,
   BadgeCheck,
   Bookmark,
+  CalendarDays,
   CheckCircle2,
+  Clock,
   MapPin,
   ShieldCheck,
   Star,
+  Users,
 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -15,7 +18,6 @@ import {
   CategoryChip,
   EventCard,
   EventDetailPanel,
-  PageHeader,
   StatusBadge,
 } from '@/components'
 import {
@@ -24,10 +26,16 @@ import {
   getRelatedEvents,
 } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
+import {
+  getApplicationStatusLabel,
+  getEventModeLabel,
+  getVolunteerRoleLabel,
+} from '@/lib/display-labels'
+import { formatDate, formatEventTime } from '@/lib/format'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
 import { useAuth } from '@/providers/useAuth'
 import { mapApplication, mapEvent, publicApi, volunteerApi } from '@/services/api'
-import type { UserRole } from '@/types/migunani'
+import type { ApplicationStatus, Organizer, UserRole, VolunteerEvent } from '@/types/migunani'
 
 type EventDetailPageProps = {
   viewer?: 'public' | 'volunteer' | 'organizer'
@@ -81,7 +89,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
     if (isLoading) {
       return (
         <PagePlaceholder
-          eyebrow="Event Detail"
+          eyebrow="Detail event"
           title="Memuat detail event."
           description="Kami sedang mengambil informasi terbaru untuk event ini."
         />
@@ -90,7 +98,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
 
     return (
       <PagePlaceholder
-        eyebrow="Event Detail"
+        eyebrow="Detail event"
         title="Event tidak ditemukan."
         description="Event yang kamu buka tidak tersedia atau sudah tidak dipublikasikan."
       />
@@ -150,7 +158,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
           ? 'Kembali ke dashboard'
           : isAdminView
             ? 'Kembali ke kelola event'
-            : 'Kembali ke explore'}
+            : 'Kembali ke daftar event'}
       </Link>
 
       {isLoading ? (
@@ -163,45 +171,76 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
         />
       ) : null}
 
-      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
-        <div className="relative h-[320px] bg-muted md:h-[420px]">
-          <img src={event.image} alt="" className="size-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-8">
-            <div className="flex flex-wrap gap-2">
-              <StatusBadge status={event.status} className="bg-card text-foreground" />
-              <span className="rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur">
-                {event.mode}
-              </span>
-            </div>
-            <h1 className="mt-4 max-w-4xl font-heading text-3xl font-extrabold leading-tight sm:text-5xl">
-              {event.title}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/80 sm:text-base">
-              {event.shortDescription}
-            </p>
-          </div>
-        </div>
-      </section>
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-6">
+          <section className="min-w-0 overflow-hidden rounded-lg border bg-card shadow-sm">
+            <div className="grid lg:grid-cols-[minmax(280px,0.95fr)_1fr]">
+              <div className="relative min-h-[200px] bg-muted sm:min-h-[320px] lg:min-h-full">
+                <img src={event.image} alt="" className="absolute inset-0 size-full object-cover" />
+              </div>
+              <div className="flex min-w-0 flex-col justify-between gap-6 p-5 sm:p-6">
+                <div>
+                  <div className="flex flex-wrap gap-2">
+                    <StatusBadge status={event.status} />
+                    <CategoryChip category={event.category} />
+                    <span className="rounded-full border bg-muted px-3 py-1 text-xs font-bold text-muted-foreground">
+                      {getEventModeLabel(event.mode)}
+                    </span>
+                  </div>
+                  <h1 className="mt-4 max-w-[20rem] whitespace-normal break-words font-heading text-2xl font-extrabold leading-tight text-foreground [overflow-wrap:anywhere] sm:max-w-3xl sm:text-4xl">
+                    {event.title}
+                  </h1>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                    {event.shortDescription}
+                  </p>
+                  <div className="mt-4 max-w-[20rem] sm:max-w-full lg:hidden">
+                    <EventAction
+                      applyHref={applyHref}
+                      isVolunteerView={isVolunteerView}
+                      isOrganizerView={isOrganizerView}
+                      isAdminView={isAdminView}
+                      canManageSpecificEvent={canManageSpecificEvent}
+                      eventId={event.id}
+                      status={volunteerApplication?.status}
+                      fullWidth
+                    />
+                  </div>
+                </div>
 
-      <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="space-y-6">
-          <PageHeader
-            eyebrow="Event Detail"
-            title="Detail kegiatan"
-            description={event.description}
-            action={
-              <EventAction
-                applyHref={applyHref}
-                isVolunteerView={isVolunteerView}
-                isOrganizerView={isOrganizerView}
-                isAdminView={isAdminView}
-                canManageSpecificEvent={canManageSpecificEvent}
-                eventId={event.id}
-                status={volunteerApplication?.status}
-              />
-            }
+                <div className="grid max-w-[20rem] gap-3 rounded-lg border bg-muted/40 p-3 text-sm font-semibold text-muted-foreground sm:max-w-none sm:grid-cols-2">
+                  <HeroFact icon={CalendarDays} label={formatDate(event.date)} />
+                  <HeroFact icon={Clock} label={formatEventTime(event.startTime, event.endTime)} />
+                  <HeroFact icon={MapPin} label={`${event.location}, ${event.city}`} />
+                  <HeroFact icon={Users} label={`${event.registered}/${event.quota} relawan`} />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <EventSidebar
+            event={event}
+            organizer={organizer}
+            isVolunteerView={isVolunteerView}
+            isOrganizerView={isOrganizerView}
+            isAdminView={isAdminView}
+            canManageSpecificEvent={canManageSpecificEvent}
+            applyHref={applyHref}
+            isSaved={isSaved}
+            status={volunteerApplication?.status}
+            onSavedToggle={toggleSavedEvent}
+            showAction={false}
+            className="lg:hidden"
           />
+
+          <section className="rounded-lg border bg-card p-5 shadow-sm sm:p-6">
+            <p className="text-sm font-bold uppercase text-primary">Tentang kegiatan</p>
+            <h2 className="mt-2 font-heading text-2xl font-extrabold">
+              Apa yang akan dilakukan relawan.
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
+              {event.description}
+            </p>
+          </section>
 
           <div className="grid gap-4 md:grid-cols-3">
             <InfoCard
@@ -210,7 +249,11 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
               items={event.benefits}
             />
             <InfoCard icon={<Star size={20} />} label="Skill dibutuhkan" items={event.skills} />
-            <InfoCard icon={<BadgeCheck size={20} />} label="Role relawan" items={event.roles} />
+            <InfoCard
+              icon={<BadgeCheck size={20} />}
+              label="Peran relawan"
+              items={event.roles.map(getVolunteerRoleLabel)}
+            />
           </div>
 
           <section className="rounded-lg border bg-card p-6 shadow-sm">
@@ -222,7 +265,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                   {organizer?.type ?? 'Komunitas'} dari {organizer?.city ?? event.city}.
-                  Organizer ini mengelola kegiatan relawan dengan response time{' '}
+                  Organizer ini mengelola kegiatan relawan dengan respons{' '}
                   {organizer?.responseTime ?? 'cepat'}.
                 </p>
               </div>
@@ -252,36 +295,26 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
                   key={tag}
                   className="rounded-full border bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground"
                 >
-                  {tag}
+                  {tag === event.mode ? getEventModeLabel(event.mode) : tag}
                 </span>
               ))}
             </div>
           </section>
         </div>
 
-        <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <EventDetailPanel event={event} organizer={organizer} />
-          {isVolunteerView ? (
-            <button
-              type="button"
-              onClick={() => void toggleSavedEvent()}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border bg-card px-5 text-sm font-bold transition hover:bg-muted"
-            >
-              <Bookmark size={17} fill={isSaved ? 'currentColor' : 'none'} />
-              {isSaved ? 'Hapus dari tersimpan' : 'Simpan event'}
-            </button>
-          ) : null}
-          <EventAction
-            applyHref={applyHref}
-            isVolunteerView={isVolunteerView}
-            isOrganizerView={isOrganizerView}
-            isAdminView={isAdminView}
-            canManageSpecificEvent={canManageSpecificEvent}
-            eventId={event.id}
-            status={volunteerApplication?.status}
-            fullWidth
-          />
-        </div>
+        <EventSidebar
+          event={event}
+          organizer={organizer}
+          isVolunteerView={isVolunteerView}
+          isOrganizerView={isOrganizerView}
+          isAdminView={isAdminView}
+          canManageSpecificEvent={canManageSpecificEvent}
+          applyHref={applyHref}
+          isSaved={isSaved}
+          status={volunteerApplication?.status}
+          onSavedToggle={toggleSavedEvent}
+          className="hidden lg:sticky lg:top-24 lg:block lg:self-start"
+        />
       </section>
 
       {relatedEvents.length > 0 ? (
@@ -373,6 +406,81 @@ function ApiNotice({
   )
 }
 
+function HeroFact({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof CalendarDays
+  label: string
+}) {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <Icon size={16} className="shrink-0 text-primary" />
+      <span className="truncate">{label}</span>
+    </span>
+  )
+}
+
+function EventSidebar({
+  event,
+  organizer,
+  isVolunteerView,
+  isOrganizerView,
+  isAdminView,
+  canManageSpecificEvent,
+  applyHref,
+  isSaved,
+  status,
+  onSavedToggle,
+  showAction = true,
+  className,
+}: {
+  event: VolunteerEvent
+  organizer?: Organizer
+  isVolunteerView: boolean
+  isOrganizerView: boolean
+  isAdminView: boolean
+  canManageSpecificEvent: boolean
+  applyHref: string
+  isSaved: boolean
+  status?: ApplicationStatus
+  onSavedToggle: () => Promise<void>
+  showAction?: boolean
+  className?: string
+}) {
+  const saveButton = isVolunteerView ? (
+    <button
+      type="button"
+      onClick={() => void onSavedToggle()}
+      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border bg-card px-5 text-sm font-bold transition hover:bg-muted"
+    >
+      <Bookmark size={17} fill={isSaved ? 'currentColor' : 'none'} />
+      {isSaved ? 'Hapus dari tersimpan' : 'Simpan event'}
+    </button>
+  ) : null
+
+  const actionControl = showAction ? (
+    <EventAction
+      applyHref={applyHref}
+      isVolunteerView={isVolunteerView}
+      isOrganizerView={isOrganizerView}
+      isAdminView={isAdminView}
+      canManageSpecificEvent={canManageSpecificEvent}
+      eventId={event.id}
+      status={status}
+      fullWidth
+    />
+  ) : null
+
+  return (
+    <div className={`space-y-4 ${className ?? ''}`}>
+      <EventDetailPanel event={event} organizer={organizer} />
+      {saveButton}
+      {actionControl}
+    </div>
+  )
+}
+
 function EventAction({
   applyHref,
   isVolunteerView,
@@ -389,7 +497,7 @@ function EventAction({
   isAdminView: boolean
   canManageSpecificEvent: boolean
   eventId: string
-  status?: string
+  status?: ApplicationStatus
   fullWidth?: boolean
 }) {
   if (isOrganizerView) {
@@ -419,7 +527,7 @@ function EventAction({
           to={`/organizer/applicants?event=${eventId}`}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
         >
-          Kelola applicant
+          Kelola pendaftar
           <ArrowRight size={17} />
         </Link>
         <Link
@@ -453,7 +561,7 @@ function EventAction({
     return (
       <div className={fullWidth ? 'grid gap-3' : 'flex flex-col gap-3 sm:flex-row'}>
         <div className="rounded-md border bg-accent px-4 py-3 text-sm font-bold text-accent-foreground">
-          Sudah terdaftar · Status {status}
+          Sudah terdaftar · {getApplicationStatusLabel(status)}
         </div>
         <Link
           to="/volunteer/dashboard?tab=applications"

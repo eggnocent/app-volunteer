@@ -1,22 +1,10 @@
 import type { ApplicationStatus, EventStatus } from '@/types/migunani'
+import { getStatusLabel } from '@/lib/display-labels'
 import { cn } from '@/lib/utils'
 
 type StatusBadgeProps = {
   status: EventStatus | ApplicationStatus
   className?: string
-}
-
-const statusLabel: Record<EventStatus | ApplicationStatus, string> = {
-  Open: 'Open',
-  'Nearly Full': 'Hampir penuh',
-  Closed: 'Tutup',
-  Draft: 'Draft',
-  Submitted: 'Terkirim',
-  Accepted: 'Diterima',
-  Rejected: 'Ditolak',
-  Cancelled: 'Batal',
-  Waitlisted: 'Waiting list',
-  Completed: 'Selesai',
 }
 
 const statusClassName: Record<EventStatus | ApplicationStatus, string> = {
@@ -41,7 +29,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         className,
       )}
     >
-      {statusLabel[status]}
+      {getStatusLabel(status)}
     </span>
   )
 }

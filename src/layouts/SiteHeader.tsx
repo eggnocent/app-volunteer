@@ -106,7 +106,7 @@ export function SiteHeader() {
         <NavLink
           to={isAuthenticated ? dashboardHref : '/'}
           className="inline-flex size-10 items-center justify-center rounded-md border bg-card text-foreground shadow-sm md:hidden"
-          aria-label={isAuthenticated ? 'Open dashboard' : 'Open login'}
+          aria-label={isAuthenticated ? 'Buka dashboard' : 'Buka login'}
         >
           {isAuthenticated ? <LayoutDashboard size={18} /> : <LogIn size={18} />}
         </NavLink>

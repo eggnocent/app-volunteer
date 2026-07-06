@@ -3,17 +3,25 @@ import {
   CheckCircle2,
   Lock,
   Search,
+  Users,
 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
 import {
+  CategoryChip,
   ConfirmDialog,
-  OrganizerEventRow,
   PageHeader,
   StatsCard,
+  StatusBadge,
 } from '@/components'
 import { events } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
+import {
+  eventStatusOptions,
+  getEventModeLabel,
+  getEventStatusLabel,
+} from '@/lib/display-labels'
+import { formatDate, getFillPercentage } from '@/lib/format'
 import { adminApi, mapEvent } from '@/services/api'
 import type { EventCategory, EventStatus } from '@/types/migunani'
 
@@ -99,13 +107,13 @@ export function AdminEventsPage() {
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <PageHeader
-        eyebrow="Admin / Events"
-        title="Kelola semua event di platform."
-        description="Pantau, review, dan kelola seluruh event volunteer yang dipublikasikan oleh organizer di Migunani."
+        eyebrow="Admin platform"
+        title="Kelola event"
+        description="Pantau kategori, keterisian, dan status publikasi event dari satu daftar kerja."
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat event admin..." tone="loading" />
+        <ApiNotice message="Memuat daftar event..." tone="loading" />
       ) : null}
       {eventsError ? (
         <ApiNotice
@@ -175,44 +183,92 @@ export function AdminEventsPage() {
             className="h-11 rounded-md border bg-background px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
           >
             <option value="Semua">Semua status</option>
-            <option value="Open">Open</option>
-            <option value="Nearly Full">Nearly Full</option>
-            <option value="Closed">Closed</option>
+            {eventStatusOptions.map((status) => (
+              <option key={status} value={status}>
+                {getEventStatusLabel(status)}
+              </option>
+            ))}
           </select>
         </div>
       </section>
 
       <p className="text-sm font-semibold text-muted-foreground">
-        Menampilkan <span className="text-foreground">{filteredEvents.length}</span>{' '}
-        dari {visibleEvents.length} event
+        <span className="text-foreground">{filteredEvents.length}</span> dari{' '}
+        {visibleEvents.length} event ditampilkan
       </p>
 
-      <section className="grid gap-4">
-        {filteredEvents.map((event) => {
-          const isPending = pendingEventIds.includes(event.id)
+      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="grid grid-cols-[1fr_auto] gap-4 border-b bg-muted px-4 py-3 text-xs font-bold uppercase text-muted-foreground lg:grid-cols-[1fr_140px_140px_150px_150px]">
+          <span>Event</span>
+          <span className="hidden lg:block">Kategori</span>
+          <span className="hidden lg:block">Jadwal</span>
+          <span className="hidden lg:block">Keterisian</span>
+          <span>Status</span>
+        </div>
+        <div className="divide-y">
+          {filteredEvents.map((event) => {
+            const isPending = pendingEventIds.includes(event.id)
+            const fill = getFillPercentage(event.registered, event.quota)
 
-          return (
-          <div key={event.id} className="space-y-2">
-            <OrganizerEventRow event={event} detailPathPrefix={null} />
-            <select
-              value={event.status}
-              disabled={isPending}
-              onChange={(selectEvent) =>
-                setPendingStatusChange({
-                  eventId: event.id,
-                  eventTitle: event.title,
-                  status: selectEvent.target.value as EventStatus,
-                })
-              }
-              className="h-10 w-fit rounded-md border bg-background px-3 text-xs font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <option value="Open">Open</option>
-              <option value="Nearly Full">Nearly Full</option>
-              <option value="Closed">Closed</option>
-            </select>
-          </div>
-          )
-        })}
+            return (
+              <article
+                key={event.id}
+                className="grid grid-cols-[1fr_auto] gap-4 px-4 py-4 lg:grid-cols-[1fr_140px_140px_150px_150px] lg:items-center"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={event.status} />
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground lg:hidden">
+                      {event.category}
+                    </span>
+                  </div>
+                  <h2 className="mt-2 truncate font-heading text-base font-extrabold text-foreground">
+                    {event.title}
+                  </h2>
+                  <p className="mt-1 truncate text-sm font-semibold text-muted-foreground">
+                    {event.city} · {getEventModeLabel(event.mode)}
+                  </p>
+                </div>
+                <span className="hidden lg:block">
+                  <CategoryChip category={event.category} />
+                </span>
+                <span className="hidden text-sm font-semibold text-muted-foreground lg:block">
+                  {formatDate(event.date)}
+                </span>
+                <div className="hidden min-w-0 lg:block">
+                  <div className="flex items-center justify-between gap-3 text-xs font-bold text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Users size={13} className="text-primary" />
+                      {event.registered}/{event.quota}
+                    </span>
+                    <span>{fill}%</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${fill}%` }} />
+                  </div>
+                </div>
+                <select
+                  value={event.status}
+                  disabled={isPending}
+                  onChange={(selectEvent) =>
+                    setPendingStatusChange({
+                      eventId: event.id,
+                      eventTitle: event.title,
+                      status: selectEvent.target.value as EventStatus,
+                    })
+                  }
+                  className="h-9 rounded-md border bg-background px-2 text-xs font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {eventStatusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {getEventStatusLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              </article>
+            )
+          })}
+        </div>
       </section>
 
       {filteredEvents.length === 0 ? (
@@ -228,7 +284,7 @@ export function AdminEventsPage() {
         <ConfirmDialog
           tone={pendingStatusChange.status === 'Closed' ? 'danger' : 'default'}
           title="Ubah status event?"
-          description={`${pendingStatusChange.eventTitle} akan diubah menjadi ${pendingStatusChange.status}. Perubahan ini memengaruhi visibilitas dan pendaftaran relawan.`}
+          description={`${pendingStatusChange.eventTitle} akan diubah menjadi ${getEventStatusLabel(pendingStatusChange.status)}. Perubahan ini memengaruhi visibilitas dan pendaftaran relawan.`}
           confirmLabel="Ubah status"
           isPending={pendingEventIds.includes(pendingStatusChange.eventId)}
           onCancel={() => setPendingStatusChange(null)}

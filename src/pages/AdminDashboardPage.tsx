@@ -3,7 +3,6 @@ import {
   Building2,
   CalendarDays,
   Clock3,
-  HeartHandshake,
   ShieldCheck,
   TrendingUp,
   Users,
@@ -11,7 +10,7 @@ import {
 import { useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
-import { PageHeader, StatsCard } from '@/components'
+import { PageHeader, StatsCard, UserRoleBadge, UserStatusBadge } from '@/components'
 import {
   adminStats,
   events,
@@ -120,7 +119,7 @@ export function AdminDashboardPage() {
                       </div>
                     </div>
                     <span className="hidden md:block">
-                      <RoleBadge role={user.role} />
+                      <UserRoleBadge role={user.role} />
                     </span>
                     <span className="hidden text-sm font-semibold text-muted-foreground md:block">
                       {formatDate(user.joinedAt)}
@@ -241,45 +240,6 @@ function SectionTitle({
         {description}
       </p>
     </div>
-  )
-}
-
-function RoleBadge({ role }: { role: string }) {
-  const styles: Record<string, string> = {
-    admin: 'bg-deep-green text-primary-foreground',
-    organizer: 'bg-secondary text-secondary-foreground',
-    volunteer: 'bg-accent text-accent-foreground',
-  }
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${styles[role] ?? styles.volunteer}`}
-    >
-      {role === 'admin' ? (
-        <ShieldCheck size={12} />
-      ) : role === 'organizer' ? (
-        <Building2 size={12} />
-      ) : (
-        <HeartHandshake size={12} />
-      )}
-      {role.charAt(0).toUpperCase() + role.slice(1)}
-    </span>
-  )
-}
-
-function UserStatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    Active: 'bg-accent text-accent-foreground',
-    Inactive: 'bg-muted text-muted-foreground',
-    Suspended: 'bg-destructive/10 text-destructive',
-  }
-
-  return (
-    <span
-      className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-bold ${styles[status] ?? styles.Active}`}
-    >
-      {status}
-    </span>
   )
 }
 

@@ -13,20 +13,16 @@ import { Link, useParams } from 'react-router-dom'
 
 import { CategoryChip, EventCard, PageHeader } from '@/components'
 import { categories, getOrganizerById } from '@/data'
+import {
+  eventModeOptions,
+  getEventModeLabel,
+  getVolunteerRoleLabel,
+  volunteerRoleOptions,
+} from '@/lib/display-labels'
 import { cn } from '@/lib/utils'
 import { mapEvent, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
 import type { EventCategory, EventMode, VolunteerEvent, VolunteerRole } from '@/types/migunani'
-
-const roleOptions: VolunteerRole[] = [
-  'Field Volunteer',
-  'Education Mentor',
-  'Content & Documentation',
-  'Logistics Crew',
-  'Community Facilitator',
-]
-
-const modeOptions: EventMode[] = ['Offline', 'Online', 'Hybrid']
 
 const previewImage =
   'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1200&q=80'
@@ -40,24 +36,19 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
   const { user } = useAuth()
   const { eventId } = useParams()
   const isEditMode = pageMode === 'edit'
-  const [title, setTitle] = useState('Gerakan Mentoring Kampus Berdampak')
+  const [title, setTitle] = useState('')
   const [category, setCategory] = useState<EventCategory>('Pendidikan')
   const [mode, setMode] = useState<EventMode>('Offline')
-  const [city, setCity] = useState('Yogyakarta')
-  const [location, setLocation] = useState('Ruang Komunitas Migunani')
-  const [date, setDate] = useState('2026-07-12')
-  const [startTime, setStartTime] = useState('08:00')
-  const [endTime, setEndTime] = useState('13:00')
-  const [quota, setQuota] = useState(48)
-  const [description, setDescription] = useState(
-    'Program relawan untuk mendampingi pelajar menyiapkan target belajar, portofolio, dan kepercayaan diri lewat sesi mentoring kecil.',
-  )
-  const [benefits, setBenefits] = useState('Sertifikat 5 jam, Mentoring kit, Konsumsi')
-  const [skills, setSkills] = useState('Public speaking, Mentoring, Empati')
-  const [selectedRoles, setSelectedRoles] = useState<VolunteerRole[]>([
-    'Education Mentor',
-    'Content & Documentation',
-  ])
+  const [city, setCity] = useState('')
+  const [location, setLocation] = useState('')
+  const [date, setDate] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [quota, setQuota] = useState(40)
+  const [description, setDescription] = useState('')
+  const [benefits, setBenefits] = useState('')
+  const [skills, setSkills] = useState('')
+  const [selectedRoles, setSelectedRoles] = useState<VolunteerRole[]>([])
   const [published, setPublished] = useState(false)
   const [isSavingEvent, setIsSavingEvent] = useState(false)
   const [isLoadingEvent, setIsLoadingEvent] = useState(isEditMode)
@@ -72,7 +63,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
     return {
       id: 'evt-preview',
       slug: 'preview-event',
-      title: title || 'Judul event volunteer',
+      title: title || 'Judul event akan tampil di sini',
       category,
       organizerId: fallbackOrganizerId,
       location: location || 'Lokasi kegiatan',
@@ -87,13 +78,13 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
       status: 'Open',
       image: previewImage,
       shortDescription:
-        description || 'Deskripsi singkat event akan tampil di card marketplace.',
-      description,
+        description || 'Ringkasan kegiatan akan tampil setelah deskripsi diisi.',
+      description: description || 'Lengkapi deskripsi agar relawan memahami tujuan dan alur kegiatan.',
       benefits: splitItems(benefits),
       skills: splitItems(skills),
       roles: selectedRoles.length > 0 ? selectedRoles : ['Field Volunteer'],
       impactTarget: `${quota * 3} penerima manfaat dari event ini.`,
-      tags: [mode, category, 'Preview'],
+      tags: [getEventModeLabel(mode), category],
       featured: true,
     }
   }, [
@@ -262,30 +253,30 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
     <div className="space-y-6 pb-20 lg:pb-0">
       <Link
         to="/organizer/dashboard"
-        className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition hover:text-primary"
-      >
-        <ArrowLeft size={16} />
-        Kembali ke organizer dashboard
+          className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition hover:text-primary"
+        >
+          <ArrowLeft size={16} />
+        Kembali ke dashboard organizer
       </Link>
 
       <PageHeader
-        eyebrow={isEditMode ? 'Edit Event' : 'Create Event'}
+        eyebrow={isEditMode ? 'Edit event' : 'Event baru'}
         title={
           isEditMode
-            ? 'Edit event volunteer.'
-            : 'Buat event volunteer dengan preview langsung.'
+            ? 'Perbarui informasi event.'
+            : 'Buat event relawan.'
         }
         description={
           isEditMode
-            ? 'Perbarui informasi event yang sudah tersimpan di dashboard organizer.'
-            : 'Organizer bisa melihat bagaimana event akan tampil di marketplace sebelum dipublikasikan.'
+            ? 'Simpan perubahan penting agar relawan melihat informasi terbaru sebelum mendaftar.'
+            : 'Isi informasi utama, kebutuhan relawan, dan jadwal. Preview di samping hanya menampilkan tampilan publik sementara.'
         }
         action={
           <button
             type="button"
             onClick={publishPreview}
             disabled={isSavingEvent || isLoadingEvent || mustEditFallbackBeforeSubmit}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSavingEvent ? (
               <>
@@ -310,7 +301,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
 
       {loadError ? (
         <section className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm font-semibold text-destructive">
-          Data event belum bisa dimuat. Form menampilkan informasi terakhir yang tersedia. {loadError}
+          Data event belum bisa dimuat. Periksa kembali field sebelum menyimpan perubahan. {loadError}
         </section>
       ) : null}
 
@@ -325,8 +316,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                   : 'Event berhasil dipublikasikan.'}
               </h2>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Event sudah tersimpan dan akan tampil mengikuti status publikasi
-                yang berlaku di dashboard organizer.
+                Event sudah tersimpan dan akan tampil sesuai status publikasi di dashboard organizer.
               </p>
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                 {savedEventHref ? (
@@ -366,12 +356,13 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
           <FormSection
             icon={<FileText size={19} />}
             title="Informasi utama"
-            description="Tentukan judul, kategori, mode, dan deskripsi singkat event."
+            description="Isi nama kegiatan, kategori, mode, dan ringkasan yang akan dibaca relawan."
           >
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Judul event" className="md:col-span-2">
                 <input
                   value={title}
+                  placeholder="Contoh: Mentoring Karier untuk Siswa SMA"
                   onChange={(event) => {
                     markFormEdited()
                     setTitle(event.target.value)
@@ -404,9 +395,9 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                   }}
                   className={inputClassName}
                 >
-                  {modeOptions.map((item) => (
+                  {eventModeOptions.map((item) => (
                     <option key={item} value={item}>
-                      {item}
+                      {getEventModeLabel(item)}
                     </option>
                   ))}
                 </select>
@@ -414,6 +405,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
               <Field label="Deskripsi" className="md:col-span-2">
                 <textarea
                   value={description}
+                  placeholder="Jelaskan tujuan kegiatan, agenda utama, dan kontribusi yang diharapkan dari relawan."
                   onChange={(event) => {
                     markFormEdited()
                     setDescription(event.target.value)
@@ -434,6 +426,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
               <Field label="Kota">
                 <input
                   value={city}
+                  placeholder="Contoh: Yogyakarta"
                   onChange={(event) => {
                     markFormEdited()
                     setCity(event.target.value)
@@ -444,6 +437,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
               <Field label="Lokasi">
                 <input
                   value={location}
+                  placeholder="Contoh: Ruang Komunitas Migunani"
                   onChange={(event) => {
                     markFormEdited()
                     setLocation(event.target.value)
@@ -492,7 +486,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
           <FormSection
             icon={<Users size={19} />}
             title="Kebutuhan relawan"
-            description="Atur kuota, role, benefit, dan skill yang dibutuhkan."
+            description="Atur kuota, peran, benefit, dan skill yang dibutuhkan."
           >
             <div className="space-y-4">
               <Field label={`Kuota relawan: ${quota}`}>
@@ -509,9 +503,9 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                 />
               </Field>
               <div>
-                <p className="text-sm font-bold text-foreground">Role relawan</p>
+                <p className="text-sm font-bold text-foreground">Peran relawan</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {roleOptions.map((role) => {
+                  {volunteerRoleOptions.map((role) => {
                     const active = selectedRoles.includes(role)
 
                     return (
@@ -526,16 +520,17 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                             : 'bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                         )}
                       >
-                        {role}
+                        {getVolunteerRoleLabel(role)}
                       </button>
                     )
                   })}
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Benefit, pisahkan koma">
+                <Field label="Benefit (pisahkan dengan koma)">
                   <input
                     value={benefits}
+                    placeholder="Contoh: Sertifikat 5 jam, konsumsi, mentoring kit"
                     onChange={(event) => {
                       markFormEdited()
                       setBenefits(event.target.value)
@@ -543,9 +538,10 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                     className={inputClassName}
                   />
                 </Field>
-                <Field label="Skill, pisahkan koma">
+                <Field label="Skill (pisahkan dengan koma)">
                   <input
                     value={skills}
+                    placeholder="Contoh: Komunikasi, dokumentasi, empati"
                     onChange={(event) => {
                       markFormEdited()
                       setSkills(event.target.value)
@@ -562,9 +558,9 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
           <section className="rounded-lg border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-bold uppercase text-primary">Live preview</p>
+                <p className="text-sm font-bold uppercase text-primary">Preview kartu</p>
                 <h2 className="mt-1 font-heading text-2xl font-extrabold">
-                  Marketplace card
+                  Tampilan di daftar event
                 </h2>
               </div>
               <span className="flex size-10 items-center justify-center rounded-md bg-accent text-accent-foreground">
@@ -579,13 +575,22 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
           <section className="rounded-lg border bg-deep-green p-5 text-primary-foreground shadow-sm">
             <Sparkles size={22} className="text-secondary" />
             <h2 className="mt-4 font-heading text-2xl font-extrabold">
-              Preview detail
+              Ringkasan publikasi
             </h2>
             <p className="mt-2 text-sm leading-6 text-primary-foreground/78">
-              Event akan muncul sebagai kategori {previewEvent.category}, mode{' '}
-              {previewEvent.mode}, dengan {previewEvent.quota} slot relawan dan target{' '}
+              Event akan tampil sebagai kategori {previewEvent.category}, format{' '}
+              {getEventModeLabel(previewEvent.mode)}, dengan {previewEvent.quota} slot relawan dan target{' '}
               {previewEvent.impactTarget.toLowerCase()}
             </p>
+            {validationErrors.length > 0 ? (
+              <p className="mt-3 rounded-md border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-primary-foreground">
+                Belum siap dipublikasikan: {validationErrors.length} bagian perlu dilengkapi.
+              </p>
+            ) : (
+              <p className="mt-3 rounded-md border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-primary-foreground">
+                Informasi utama sudah siap disimpan.
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <CategoryChip
                 category={previewEvent.category}
@@ -596,7 +601,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                   key={role}
                   className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold"
                 >
-                  {role}
+                  {getVolunteerRoleLabel(role)}
                 </span>
               ))}
             </div>

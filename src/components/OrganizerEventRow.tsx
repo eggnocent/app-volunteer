@@ -46,7 +46,7 @@ export function OrganizerEventRow({
           </span>
           <span className="inline-flex items-center gap-2">
             <Users size={15} className="text-primary" />
-            {event.registered}/{event.quota} applicant
+            {event.registered}/{event.quota} pendaftar
           </span>
         </div>
       </div>

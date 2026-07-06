@@ -32,6 +32,7 @@ import {
   volunteerProfile,
 } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
+import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate, getFillPercentage } from '@/lib/format'
 import { mapApplication, mapEvent, mapOrganizer, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
@@ -154,7 +155,7 @@ export function OrganizerDashboardPage() {
             </span>
             <span className="inline-flex items-center gap-2">
               <MessageCircle size={16} className="text-secondary" />
-              Response time {organizer.responseTime}
+              Respons {organizer.responseTime}
             </span>
           </div>
         </article>
@@ -189,7 +190,7 @@ export function OrganizerDashboardPage() {
             <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
               <div className="grid grid-cols-[1fr_auto] gap-4 border-b bg-muted px-4 py-3 text-xs font-bold uppercase text-muted-foreground md:grid-cols-[1fr_160px_140px_120px]">
                 <span>Relawan</span>
-                <span className="hidden md:block">Role</span>
+                <span className="hidden md:block">Peran</span>
                 <span className="hidden md:block">Dikirim</span>
                 <span>Status</span>
               </div>
@@ -210,7 +211,7 @@ export function OrganizerDashboardPage() {
                       </p>
                     </div>
                     <span className="hidden text-sm font-semibold text-muted-foreground md:block">
-                      {application.role}
+                      {getVolunteerRoleLabel(application.role)}
                     </span>
                     <span className="hidden text-sm font-semibold text-muted-foreground md:block">
                       {formatDate(application.submittedAt)}
@@ -260,25 +261,25 @@ export function OrganizerDashboardPage() {
           </section>
 
           <section className="rounded-lg border bg-secondary p-5 text-secondary-foreground shadow-sm">
-            <p className="text-sm font-bold uppercase">Next action</p>
+            <p className="text-sm font-bold uppercase">Aksi berikutnya</p>
             <h2 className="mt-2 font-heading text-2xl font-extrabold">
-              Publish event baru lebih cepat.
+              Publikasikan event baru lebih cepat.
             </h2>
             <p className="mt-2 text-sm leading-6">
-              Gunakan form create event untuk melihat preview card sebelum event
+              Gunakan form event baru untuk melihat preview kartu sebelum event
               dipublikasikan.
             </p>
             <Link
               to="/organizer/create"
               className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-brand-black px-4 text-sm font-bold text-white transition hover:bg-deep-green"
             >
-              Create event
+              Buat event
               <ArrowRight size={16} />
             </Link>
           </section>
 
           <section className="rounded-lg border bg-card p-5 shadow-sm">
-            <p className="text-sm font-bold uppercase text-primary">Category demand</p>
+            <p className="text-sm font-bold uppercase text-primary">Kategori diminati</p>
             <div className="mt-4 flex flex-wrap gap-2">
               {demandCategories.map((category) => (
                 <CategoryChip key={category} category={category} />
@@ -286,7 +287,7 @@ export function OrganizerDashboardPage() {
             </div>
             <div className="mt-5 space-y-3">
               <ChecklistItem label="Brief relawan untuk event weekend" />
-              <ChecklistItem label="Review applicant prioritas" />
+              <ChecklistItem label="Tinjau pendaftar prioritas" />
               <ChecklistItem label="Lengkapi benefit dan skill event" />
             </div>
           </section>

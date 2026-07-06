@@ -40,6 +40,7 @@ import {
   events,
   getOrganizerById,
 } from '@/data'
+import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate } from '@/lib/format'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getEventMatch } from '@/lib/match'
@@ -657,7 +658,7 @@ function ApplicationsTab({
                   {event?.title ?? 'Event Migunani'}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {application.role} · {organizer?.name ?? 'Organizer'} · dikirim pada{' '}
+                  {getVolunteerRoleLabel(application.role)} · {organizer?.name ?? 'Organizer'} · dikirim pada{' '}
                   {formatDate(application.submittedAt)}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-3 text-sm font-semibold text-muted-foreground">
@@ -840,8 +841,8 @@ function getApplicationSteps(status: VolunteerApplication['status']) {
             : 1
 
   return [
-    { order: 1, label: 'Draft', helper: 'Role dan motivasi siap' },
-    { order: 2, label: 'Terkirim', helper: 'Menunggu review' },
+    { order: 1, label: 'Draft', helper: 'Peran dan motivasi siap' },
+    { order: 2, label: 'Terkirim', helper: 'Menunggu tinjauan' },
     { order: 3, label: 'Diterima', helper: 'Siap briefing' },
     { order: 4, label: 'Selesai', helper: 'Sertifikat diproses' },
   ].map((step, index) => ({ ...step, active: index <= activeIndex }))

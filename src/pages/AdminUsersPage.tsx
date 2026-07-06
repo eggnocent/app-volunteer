@@ -6,9 +6,13 @@ import {
 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
-import { ConfirmDialog, PageHeader, StatsCard } from '@/components'
+import { ConfirmDialog, PageHeader, StatsCard, UserRoleBadge } from '@/components'
 import { platformUsers } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
+import {
+  getUserStatusLabel,
+  userStatusOptions,
+} from '@/lib/display-labels'
 import { formatDate } from '@/lib/format'
 import { adminApi } from '@/services/api'
 import type { UserRole, UserStatus } from '@/types/migunani'
@@ -91,9 +95,9 @@ export function AdminUsersPage() {
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <PageHeader
-        eyebrow="Admin / Users"
-        title="Kelola semua pengguna platform."
-        description="Lihat, cari, dan filter seluruh pengguna Migunani berdasarkan role dan status akun."
+        eyebrow="Admin platform"
+        title="Kelola pengguna"
+        description="Cari pengguna, cek peran, dan ubah status akun tanpa meninggalkan daftar."
       />
 
       {isLoading ? (
@@ -163,22 +167,24 @@ export function AdminUsersPage() {
             className="h-11 rounded-md border bg-background px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
           >
             <option value="all">Semua status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Suspended">Suspended</option>
+            {userStatusOptions.map((status) => (
+              <option key={status} value={status}>
+                {getUserStatusLabel(status)}
+              </option>
+            ))}
           </select>
         </div>
       </section>
 
       <p className="text-sm font-semibold text-muted-foreground">
-        Menampilkan <span className="text-foreground">{filteredUsers.length}</span>{' '}
-        dari {visibleUsers.length} pengguna
+        <span className="text-foreground">{filteredUsers.length}</span> dari{' '}
+        {visibleUsers.length} pengguna ditampilkan
       </p>
 
       <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
         <div className="grid grid-cols-[1fr_auto] gap-4 border-b bg-muted px-4 py-3 text-xs font-bold uppercase text-muted-foreground lg:grid-cols-[1fr_140px_140px_120px_100px]">
           <span>Pengguna</span>
-          <span className="hidden lg:block">Role</span>
+          <span className="hidden lg:block">Peran</span>
           <span className="hidden lg:block">Kota</span>
           <span className="hidden lg:block">Bergabung</span>
           <span>Status</span>
@@ -208,7 +214,7 @@ export function AdminUsersPage() {
                 </div>
               </div>
               <span className="hidden lg:block">
-                <RoleBadge role={user.role} />
+                <UserRoleBadge role={user.role} />
               </span>
               <span className="hidden text-sm font-semibold text-muted-foreground lg:block">
                 {user.city}
@@ -228,9 +234,11 @@ export function AdminUsersPage() {
                 }
                 className="h-9 rounded-md border bg-background px-2 text-xs font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-                <option value="Suspended">Suspended</option>
+                {userStatusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {getUserStatusLabel(status)}
+                  </option>
+                ))}
               </select>
             </article>
             )
@@ -251,7 +259,7 @@ export function AdminUsersPage() {
         <ConfirmDialog
           tone={pendingStatusChange.status === 'Suspended' ? 'danger' : 'default'}
           title="Ubah status pengguna?"
-          description={`${pendingStatusChange.userName} akan diubah menjadi ${pendingStatusChange.status}. Pastikan perubahan ini sesuai keputusan administrasi.`}
+          description={`${pendingStatusChange.userName} akan diubah menjadi ${getUserStatusLabel(pendingStatusChange.status)}. Pastikan perubahan ini sesuai keputusan administrasi.`}
           confirmLabel="Ubah status"
           isPending={pendingUserIds.includes(pendingStatusChange.userId)}
           onCancel={() => setPendingStatusChange(null)}
@@ -281,29 +289,6 @@ function ApiNotice({
     >
       {message}
     </div>
-  )
-}
-
-function RoleBadge({ role }: { role: string }) {
-  const styles: Record<string, string> = {
-    admin: 'bg-deep-green text-primary-foreground',
-    organizer: 'bg-secondary text-secondary-foreground',
-    volunteer: 'bg-accent text-accent-foreground',
-  }
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${styles[role] ?? styles.volunteer}`}
-    >
-      {role === 'admin' ? (
-        <ShieldCheck size={12} />
-      ) : role === 'organizer' ? (
-        <Building2 size={12} />
-      ) : (
-        <HeartHandshake size={12} />
-      )}
-      {role.charAt(0).toUpperCase() + role.slice(1)}
-    </span>
   )
 }
 

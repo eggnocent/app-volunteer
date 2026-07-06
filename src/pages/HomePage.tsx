@@ -176,7 +176,7 @@ export function HomePage() {
           tone="yellow"
         />
         <StatsCard
-          label="Role akses"
+          label="Jenis akses"
           value="2"
           helper="relawan dan organizer"
           icon={BadgeCheck}
@@ -195,10 +195,10 @@ export function HomePage() {
         <div className="rounded-lg bg-deep-green p-5 text-primary-foreground">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold sm:text-sm">
             <TrendingUp size={16} />
-            SDG 8 Focus
+            Fokus SDG 8
           </span>
           <h2 className="mt-5 font-heading text-2xl font-extrabold md:text-4xl">
-            Decent Work and Economic Growth.
+            Pekerjaan layak dan pertumbuhan ekonomi.
           </h2>
           <p className="mt-4 text-sm leading-7 text-primary-foreground/78">
             Migunani mendukung pengembangan skill, pengalaman kerja sosial, dan
@@ -207,15 +207,15 @@ export function HomePage() {
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <SdgPoint
-            title="Skill readiness"
-            description="Relawan memilih role, mengasah komunikasi, koordinasi, dokumentasi, dan kerja lapangan."
+            title="Kesiapan skill"
+            description="Relawan memilih peran, mengasah komunikasi, koordinasi, dokumentasi, dan kerja lapangan."
           />
           <SdgPoint
-            title="Verified portfolio"
+            title="Portofolio terverifikasi"
             description="Dashboard menyimpan jam kontribusi, status aplikasi, dan sertifikat sebagai bukti keaktifan."
           />
           <SdgPoint
-            title="Organizer growth"
+            title="Pertumbuhan organizer"
             description="Organisasi mendapat kanal rekrutmen relawan, preview pendaftar, dan performa event."
           />
         </div>
