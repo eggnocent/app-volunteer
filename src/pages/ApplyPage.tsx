@@ -10,6 +10,7 @@ import {
   Send,
   UserRoundCheck,
 } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
@@ -66,6 +67,7 @@ const availabilityOptions = [
 
 export function ApplyPage() {
   const { user } = useAuth()
+  const prefersReducedMotion = useReducedMotion()
   const { eventId } = useParams()
   const fallbackProfile = useMemo(
     () => createVolunteerProfileFallback(user),
@@ -89,6 +91,7 @@ export function ApplyPage() {
   const { data: profile } = useAsyncResource(loadProfile, fallbackProfile)
   const organizer = event ? getOrganizerById(event.organizerId) : undefined
   const [currentStep, setCurrentStep] = useState(0)
+  const [stepDirection, setStepDirection] = useState(1)
   const [selectedRole, setSelectedRole] = useState<VolunteerRole | ''>(
     event?.roles[0] ?? '',
   )
@@ -118,6 +121,38 @@ export function ApplyPage() {
 
     return true
   }, [availability.length, currentStep, motivation, selectedRole])
+
+  const stepContent = event ? (
+    <>
+      {currentStep === 0 ? (
+        <RoleStep
+          roles={event.roles}
+          selectedRole={selectedRole}
+          onSelectRole={setSelectedRole}
+        />
+      ) : null}
+
+      {currentStep === 1 ? (
+        <MotivationStep motivation={motivation} onMotivationChange={setMotivation} />
+      ) : null}
+
+      {currentStep === 2 ? (
+        <AvailabilityStep
+          selectedOptions={availability}
+          onToggleOption={toggleAvailability}
+        />
+      ) : null}
+
+      {currentStep === 3 ? (
+        <ReviewStep
+          eventTitle={event.title}
+          selectedRole={selectedRole}
+          motivation={motivation}
+          availability={availability}
+        />
+      ) : null}
+    </>
+  ) : null
 
   if (!event) {
     if (isLoading) {
@@ -149,6 +184,7 @@ export function ApplyPage() {
 
   async function goNext() {
     if (currentStep < registrationSteps.length - 1) {
+      setStepDirection(1)
       setCurrentStep((step) => step + 1)
       return
     }
@@ -175,6 +211,7 @@ export function ApplyPage() {
   }
 
   function goBack() {
+    setStepDirection(-1)
     setCurrentStep((step) => Math.max(step - 1, 0))
   }
 
@@ -252,33 +289,32 @@ export function ApplyPage() {
 
       <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="rounded-lg border bg-card p-6 shadow-sm">
-          {currentStep === 0 ? (
-            <RoleStep
-              roles={event.roles}
-              selectedRole={selectedRole}
-              onSelectRole={setSelectedRole}
-            />
-          ) : null}
-
-          {currentStep === 1 ? (
-            <MotivationStep motivation={motivation} onMotivationChange={setMotivation} />
-          ) : null}
-
-          {currentStep === 2 ? (
-            <AvailabilityStep
-              selectedOptions={availability}
-              onToggleOption={toggleAvailability}
-            />
-          ) : null}
-
-          {currentStep === 3 ? (
-            <ReviewStep
-              eventTitle={event.title}
-              selectedRole={selectedRole}
-              motivation={motivation}
-              availability={availability}
-            />
-          ) : null}
+          {prefersReducedMotion ? (
+            stepContent
+          ) : (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={currentStep}
+                initial={{
+                  opacity: 0,
+                  x: stepDirection > 0 ? 18 : -18,
+                  filter: 'blur(2px)',
+                }}
+                animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                exit={{
+                  opacity: 0,
+                  x: stepDirection > 0 ? -14 : 14,
+                  filter: 'blur(2px)',
+                }}
+                transition={{
+                  duration: 0.34,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                {stepContent}
+              </motion.div>
+            </AnimatePresence>
+          )}
 
           <div className="mt-8 flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-between">
             {submitError ? (

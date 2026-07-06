@@ -6,6 +6,7 @@ import {
   HeartHandshake,
   UserPlus,
 } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
@@ -142,47 +143,50 @@ export function RegisterPage({ role }: RegisterPageProps) {
 
   if (stage === 'success') {
     return (
-      <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-3xl items-center py-8">
-        <section className="w-full overflow-hidden rounded-lg border bg-card shadow-sm">
-          <div className="bg-deep-green p-8 text-primary-foreground">
-            <span className="flex size-14 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
-              <CheckCircle2 size={28} />
-            </span>
-            <p className="mt-6 text-sm font-bold uppercase text-primary-foreground/70">
-              Register berhasil
-            </p>
-            <h1 className="mt-2 font-heading text-3xl font-extrabold sm:text-5xl">
-              Akun {isOrganizer ? 'organizer' : 'relawan'} siap digunakan.
-            </h1>
-            <p className="mt-4 max-w-2xl leading-7 text-primary-foreground/78">
-              Akunmu sudah aktif. Kamu bisa langsung melanjutkan aktivitas
-              Migunani sesuai tujuanmu.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 p-6 sm:flex-row">
-            <Link
-              to={dashboardHref}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
-            >
-              {dashboardCtaLabel}
-              <ArrowRight size={17} />
-            </Link>
-            <Link
-              to={loginHref}
-              className="inline-flex h-11 items-center justify-center rounded-md border bg-card px-5 text-sm font-bold transition hover:bg-muted"
-            >
-              Kembali ke login
-            </Link>
-          </div>
-        </section>
-      </div>
+      <StageTransition stage={stage}>
+        <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-3xl items-center py-8">
+          <section className="w-full overflow-hidden rounded-lg border bg-card shadow-sm">
+            <div className="bg-deep-green p-8 text-primary-foreground">
+              <span className="flex size-14 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
+                <CheckCircle2 size={28} />
+              </span>
+              <p className="mt-6 text-sm font-bold uppercase text-primary-foreground/70">
+                Register berhasil
+              </p>
+              <h1 className="mt-2 font-heading text-3xl font-extrabold sm:text-5xl">
+                Akun {isOrganizer ? 'organizer' : 'relawan'} siap digunakan.
+              </h1>
+              <p className="mt-4 max-w-2xl leading-7 text-primary-foreground/78">
+                Akunmu sudah aktif. Kamu bisa langsung melanjutkan aktivitas
+                Migunani sesuai tujuanmu.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 p-6 sm:flex-row">
+              <Link
+                to={dashboardHref}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+              >
+                {dashboardCtaLabel}
+                <ArrowRight size={17} />
+              </Link>
+              <Link
+                to={loginHref}
+                className="inline-flex h-11 items-center justify-center rounded-md border bg-card px-5 text-sm font-bold transition hover:bg-muted"
+              >
+                Kembali ke login
+              </Link>
+            </div>
+          </section>
+        </div>
+      </StageTransition>
     )
   }
 
   if (stage === 'onboarding') {
     return (
-      <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-5xl items-center py-8">
-        <section className="w-full rounded-lg border bg-card p-8 shadow-sm">
+      <StageTransition stage={stage}>
+        <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-5xl items-center py-8">
+          <section className="w-full rounded-lg border bg-card p-8 shadow-sm">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
             <div>
               <p className="text-sm font-bold uppercase text-primary">
@@ -327,14 +331,16 @@ export function RegisterPage({ role }: RegisterPageProps) {
               )}
             </button>
           </div>
-        </section>
-      </div>
+          </section>
+        </div>
+      </StageTransition>
     )
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-6xl items-center py-8">
-      <section className="grid w-full gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+    <StageTransition stage={stage}>
+      <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-6xl items-center py-8">
+        <section className="grid w-full gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-lg border bg-deep-green p-8 text-primary-foreground shadow-sm">
           <span className="flex size-14 items-center justify-center rounded-md bg-secondary font-heading text-2xl font-extrabold text-secondary-foreground">
             M
@@ -500,8 +506,40 @@ export function RegisterPage({ role }: RegisterPageProps) {
             </p>
           </form>
         </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </StageTransition>
+  )
+}
+
+function StageTransition({
+  stage,
+  children,
+}: {
+  stage: string
+  children: React.ReactNode
+}) {
+  const prefersReducedMotion = useReducedMotion()
+
+  if (prefersReducedMotion) {
+    return <>{children}</>
+  }
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={stage}
+        initial={{ opacity: 0, y: 16, filter: 'blur(2px)' }}
+        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        exit={{ opacity: 0, y: -12, filter: 'blur(2px)' }}
+        transition={{
+          duration: 0.36,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   )
 }
 
