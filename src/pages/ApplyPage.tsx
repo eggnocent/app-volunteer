@@ -20,13 +20,18 @@ import {
   RegistrationStepper,
   type RegistrationStep,
 } from '@/components'
-import { getEventById, getOrganizerById, volunteerProfile } from '@/data'
+import { getEventById, getOrganizerById } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate, formatEventTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import {
+  createVolunteerProfileFallback,
+  normalizeVolunteerProfile,
+} from '@/lib/volunteer-profile'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
+import { useAuth } from '@/providers/useAuth'
 import { mapEvent, publicApi, volunteerApi } from '@/services/api'
-import type { VolunteerRole } from '@/types/migunani'
+import type { VolunteerProfile, VolunteerRole } from '@/types/migunani'
 
 const registrationSteps: RegistrationStep[] = [
   {
@@ -60,7 +65,12 @@ const availabilityOptions = [
 ]
 
 export function ApplyPage() {
+  const { user } = useAuth()
   const { eventId } = useParams()
+  const fallbackProfile = useMemo(
+    () => createVolunteerProfileFallback(user),
+    [user],
+  )
   const fallbackEvent = eventId ? getEventById(eventId) : undefined
   const loadEvent = useCallback(async () => {
     if (!eventId) {
@@ -73,6 +83,10 @@ export function ApplyPage() {
     loadEvent,
     fallbackEvent,
   )
+  const loadProfile = useCallback(async () => {
+    return normalizeVolunteerProfile(await volunteerApi.getProfile(), fallbackProfile)
+  }, [fallbackProfile])
+  const { data: profile } = useAsyncResource(loadProfile, fallbackProfile)
   const organizer = event ? getOrganizerById(event.organizerId) : undefined
   const [currentStep, setCurrentStep] = useState(0)
   const [selectedRole, setSelectedRole] = useState<VolunteerRole | ''>(
@@ -308,7 +322,7 @@ export function ApplyPage() {
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <EventSummaryCard eventId={event.id} />
+          <EventSummaryCard eventId={event.id} profile={profile} />
           <EventDetailPanel event={event} organizer={organizer} />
         </div>
       </section>
@@ -510,7 +524,13 @@ function ReviewStep({
   )
 }
 
-function EventSummaryCard({ eventId }: { eventId: string }) {
+function EventSummaryCard({
+  eventId,
+  profile,
+}: {
+  eventId: string
+  profile: VolunteerProfile
+}) {
   const event = getEventById(eventId)
 
   if (!event) {
@@ -541,7 +561,7 @@ function EventSummaryCard({ eventId }: { eventId: string }) {
           </span>
         </div>
         <div className="rounded-md bg-muted p-3 text-sm font-semibold text-muted-foreground">
-          Mendaftar sebagai {volunteerProfile.name}, {volunteerProfile.major}.
+          Mendaftar sebagai {profile.name}, {profile.major}.
         </div>
       </div>
     </article>

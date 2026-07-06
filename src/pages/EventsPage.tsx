@@ -2,12 +2,22 @@ import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { EventCard, FilterBar, PageHeader } from '@/components'
-import { events, getOrganizerById, volunteerProfile } from '@/data'
+import { events, getOrganizerById } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getEventMatch } from '@/lib/match'
+import {
+  createVolunteerProfileFallback,
+  normalizeVolunteerProfile,
+} from '@/lib/volunteer-profile'
 import { mapEvent, organizerApi, publicApi, volunteerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
-import type { EventCategory, EventMode, UserRole } from '@/types/migunani'
+import type {
+  EventCategory,
+  EventMode,
+  UserRole,
+  VolunteerEvent,
+  VolunteerProfile,
+} from '@/types/migunani'
 
 type EventsPageProps = {
   viewer?: 'public' | 'volunteer' | 'organizer'
@@ -16,6 +26,12 @@ type EventsPageProps = {
 type EventActionContext = 'public' | UserRole
 
 type SortOption = 'relevant' | 'newest' | 'remaining' | 'match'
+
+type EventsResource = {
+  events: VolunteerEvent[]
+  savedEventIds: string[]
+  profile: VolunteerProfile
+}
 
 export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   const [searchParams] = useSearchParams()
@@ -30,12 +46,17 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   const [selectedMode, setSelectedMode] = useState<EventMode | 'Semua'>('Semua')
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [sort, setSort] = useState<SortOption>('relevant')
-  const initialResource = useMemo(
+  const fallbackProfile = useMemo(
+    () => createVolunteerProfileFallback(user),
+    [user],
+  )
+  const initialResource = useMemo<EventsResource>(
     () => ({
       events,
-      savedEventIds: volunteerProfile.savedEventIds,
+      savedEventIds: fallbackProfile.savedEventIds,
+      profile: fallbackProfile,
     }),
-    [],
+    [fallbackProfile],
   )
   const organizerId = user?.organizerId
   const loadEvents = useCallback(async () => {
@@ -44,18 +65,36 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
         ? await organizerApi.getOrganizerEvents(organizerId)
         : await publicApi.getEvents()
     const mappedEvents = apiEvents.map(mapEvent)
-    const savedEventIds =
-      isVolunteerContext
-        ? (await volunteerApi.getSavedEvents()).map((event) => event.id)
-        : mappedEvents
-            .filter((event) => 'isSaved' in event && Boolean(event.isSaved))
-            .map((event) => event.id)
+
+    if (isVolunteerContext) {
+      const [profileResult, savedEventsResult] = await Promise.allSettled([
+        volunteerApi.getProfile(),
+        volunteerApi.getSavedEvents(),
+      ])
+      const profile =
+        profileResult.status === 'fulfilled'
+          ? normalizeVolunteerProfile(profileResult.value, fallbackProfile)
+          : fallbackProfile
+      const savedEventIds =
+        savedEventsResult.status === 'fulfilled'
+          ? savedEventsResult.value.map((event) => event.id)
+          : profile.savedEventIds
+
+      return {
+        events: mappedEvents,
+        savedEventIds,
+        profile,
+      }
+    }
 
     return {
       events: mappedEvents,
-      savedEventIds,
+      savedEventIds: mappedEvents
+        .filter((event) => 'isSaved' in event && Boolean(event.isSaved))
+        .map((event) => event.id),
+      profile: fallbackProfile,
     }
-  }, [isVolunteerContext, organizerId, viewer])
+  }, [fallbackProfile, isVolunteerContext, organizerId, viewer])
   const {
     data: resource,
     error: resourceError,
@@ -112,8 +151,8 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 
       if (sort === 'match' && isVolunteerContext) {
         return (
-          getEventMatch(b, volunteerProfile).matchScore -
-          getEventMatch(a, volunteerProfile).matchScore
+          getEventMatch(b, resource.profile).matchScore -
+          getEventMatch(a, resource.profile).matchScore
         )
       }
 
@@ -122,7 +161,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 
       return bRelevant - aRelevant || a.date.localeCompare(b.date)
     })
-  }, [filteredEvents, isVolunteerContext, sort])
+  }, [filteredEvents, isVolunteerContext, resource.profile, sort])
 
   async function toggleSaved(eventId: string) {
     const currentSaved = isEventSaved(eventId, resource.savedEventIds, savedOverrides)
@@ -206,7 +245,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
               variant={view}
               primaryAction={getEventCardAction(actionContext, event.id, viewer === 'organizer')}
               {...(isVolunteerContext
-                ? getEventMatch(event, volunteerProfile)
+                ? getEventMatch(event, resource.profile)
                 : {})}
             />
           ))}

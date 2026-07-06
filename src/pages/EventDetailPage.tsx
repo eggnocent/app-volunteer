@@ -22,8 +22,6 @@ import {
   getEventBySlug,
   getOrganizerById,
   getRelatedEvents,
-  volunteerApplications,
-  volunteerProfile,
 } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
@@ -49,10 +47,8 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
         ? {
             event: fallbackEvent,
             relatedEvents: getRelatedEvents(fallbackEvent.id),
-            volunteerApplication: volunteerApplications.find(
-              (application) => application.eventId === fallbackEvent.id,
-            ),
-            isSaved: volunteerProfile.savedEventIds.includes(fallbackEvent.id),
+            volunteerApplication: undefined,
+            isSaved: false,
           }
         : undefined,
     [fallbackEvent],
@@ -302,7 +298,6 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
                 key={relatedEvent.id}
                 event={relatedEvent}
                 organizer={getOrganizerById(relatedEvent.organizerId)}
-                saved={volunteerProfile.savedEventIds.includes(relatedEvent.id)}
                 detailPathPrefix={relatedDetailPathPrefix}
                 variant="compact"
                 primaryAction={getRelatedEventAction(

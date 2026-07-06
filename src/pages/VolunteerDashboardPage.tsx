@@ -36,16 +36,20 @@ import {
   type ApiEvent,
 } from '@/services/api'
 import {
-  certificates,
   events,
   getOrganizerById,
-  volunteerApplications as initialApplications,
-  volunteerProfile,
 } from '@/data'
 import { formatDate } from '@/lib/format'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getEventMatch } from '@/lib/match'
 import { cn } from '@/lib/utils'
+import {
+  createVolunteerProfileFallback,
+  getVolunteerActivity,
+  getVolunteerProgressPercent,
+  normalizeVolunteerProfile,
+} from '@/lib/volunteer-profile'
+import { useAuth } from '@/providers/useAuth'
 import type { Certificate, VolunteerApplication, VolunteerEvent, VolunteerProfile } from '@/types/migunani'
 
 type DashboardTab = 'overview' | 'applications' | 'certificates'
@@ -64,22 +68,31 @@ const statIcons = [Clock3, CheckCircle2, Award, HeartHandshake]
 const statTones = ['green', 'yellow', 'dark', 'neutral'] as const
 
 export function VolunteerDashboardPage() {
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = getActiveTab(searchParams.get('tab'))
-  const initialDashboard = useMemo(
+  const fallbackProfile = useMemo(
+    () => createVolunteerProfileFallback(user),
+    [user],
+  )
+  const initialDashboard = useMemo<VolunteerDashboardResource>(
     () => ({
-      profile: volunteerProfile,
-      applications: initialApplications,
-      certificates,
+      profile: fallbackProfile,
+      applications: [],
+      certificates: [],
       savedEvents: events.filter((event) =>
-        volunteerProfile.savedEventIds.includes(event.id),
+        fallbackProfile.savedEventIds.includes(event.id),
       ),
       eventLookup: events,
     }),
-    [],
+    [fallbackProfile],
   )
   const loadDashboard = useCallback(async () => {
     const aggregate = await volunteerApi.getVolunteerDashboard()
+    const aggregateProfile = normalizeVolunteerProfile(
+      aggregate.profile,
+      fallbackProfile,
+    )
     const [profileResult, applicationsResult, savedEventsResult, certificatesResult] =
       await Promise.allSettled([
         volunteerApi.getProfile(),
@@ -92,8 +105,8 @@ export function VolunteerDashboardPage() {
       ...aggregate,
       profile:
         profileResult.status === 'fulfilled'
-          ? profileResult.value
-          : aggregate.profile,
+          ? normalizeVolunteerProfile(profileResult.value, aggregateProfile)
+          : aggregateProfile,
       applications:
         applicationsResult.status === 'fulfilled'
           ? applicationsResult.value
@@ -106,8 +119,8 @@ export function VolunteerDashboardPage() {
         certificatesResult.status === 'fulfilled'
           ? certificatesResult.value
           : aggregate.certificates,
-    })
-  }, [])
+    }, fallbackProfile)
+  }, [fallbackProfile])
   const {
     data: dashboard,
     error: dashboardError,
@@ -213,25 +226,60 @@ export function VolunteerDashboardPage() {
     }, 2000)
   }
 
+  const currentHours = dashboard.profile.totalHours
+  const activity = getVolunteerActivity(currentHours)
+  const progressPercent = getVolunteerProgressPercent(currentHours)
+
   // Dynamic values for Stats
   const dynamicStats = useMemo(() => {
-    const totalHours = dashboard.profile.totalHours
-    const completedCount = visibleApplications.filter((app) => app.status === 'Completed').length
+    const completedApplications = visibleApplications.filter(
+      (app) => app.status === 'Completed',
+    ).length
+    const completedCount = Math.max(
+      dashboard.profile.completedEvents,
+      completedApplications,
+    )
     const certificatesCount = dashboard.certificates.length
     const activeCount = activeApplications.length
+    const activeCategories = dashboard.profile.interests.length
 
     return [
-      { id: '1', label: 'Jam kontribusi', value: `${totalHours} jam`, delta: '+14 jam bulan ini' },
-      { id: '2', label: 'Event selesai', value: `${completedCount} event`, delta: '3 kategori aktif' },
-      { id: '3', label: 'Sertifikat', value: `${certificatesCount} file`, delta: 'siap diunduh' },
-      { id: '4', label: 'Aplikasi berjalan', value: `${activeCount} aplikasi`, delta: 'menunggu review' },
+      {
+        id: '1',
+        label: 'Jam kontribusi',
+        value: `${currentHours} jam`,
+        delta: currentHours > 0 ? 'Jam terverifikasi' : 'Mulai dari event pertamamu',
+      },
+      {
+        id: '2',
+        label: 'Event selesai',
+        value: `${completedCount} event`,
+        delta:
+          completedCount > 0
+            ? `${activeCategories || 1} kategori aktif`
+            : 'Belum ada event selesai',
+      },
+      {
+        id: '3',
+        label: 'Sertifikat',
+        value: `${certificatesCount} file`,
+        delta: certificatesCount > 0 ? 'siap diunduh' : 'Belum ada sertifikat',
+      },
+      {
+        id: '4',
+        label: 'Aplikasi berjalan',
+        value: `${activeCount} aplikasi`,
+        delta: activeCount > 0 ? 'menunggu review' : 'Belum ada aplikasi aktif',
+      },
     ]
-  }, [activeApplications.length, dashboard.certificates.length, dashboard.profile.totalHours, visibleApplications])
-
-  // Volunteer Level Progress based on hours
-  const currentHours = dashboard.profile.totalHours
-  const nextLevelHours = 100
-  const progressPercent = Math.min((currentHours / nextLevelHours) * 100, 100)
+  }, [
+    activeApplications.length,
+    currentHours,
+    dashboard.certificates.length,
+    dashboard.profile.completedEvents,
+    dashboard.profile.interests.length,
+    visibleApplications,
+  ])
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
@@ -290,7 +338,7 @@ export function VolunteerDashboardPage() {
                 </h2>
                 <span className="inline-flex items-center gap-1 rounded bg-secondary/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-secondary">
                   <Sparkles size={10} />
-                  Gold Member
+                  {activity.tierLabel}
                 </span>
               </div>
               <p className="mt-1 text-xs text-primary-foreground/75">
@@ -301,8 +349,8 @@ export function VolunteerDashboardPage() {
 
           <div className="mt-4 border-t border-white/10 pt-3">
             <div className="flex justify-between text-xs font-semibold">
-              <span>Keaktifan: Level 3</span>
-              <span>{currentHours}/{nextLevelHours} jam</span>
+              <span>Keaktifan: Level {activity.level}</span>
+              <span>{currentHours}/{activity.nextLevelHours} jam</span>
             </div>
             <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/20">
               <div
@@ -822,6 +870,7 @@ type VolunteerDashboardResource = {
 
 function mapVolunteerDashboardResource(
   dashboard: ApiVolunteerDashboard,
+  fallbackProfile: VolunteerProfile,
 ): VolunteerDashboardResource {
   const applications = dashboard.applications.map(mapApplication)
   const certificates = dashboard.certificates.map(mapCertificate)
@@ -836,7 +885,7 @@ function mapVolunteerDashboardResource(
   ]
 
   return {
-    profile: dashboard.profile,
+    profile: normalizeVolunteerProfile(dashboard.profile, fallbackProfile),
     applications,
     certificates,
     savedEvents,

@@ -29,7 +29,7 @@ const notificationIcons = {
 export function NotificationCenter({ area }: NotificationCenterProps) {
   const [open, setOpen] = useState(false)
   const [readIds, setReadIds] = useState<string[]>([])
-  const fallbackNotifications = useMemo(() => getFallbackNotifications(area), [area])
+  const fallbackNotifications = useMemo<ApiNotification[]>(() => [], [])
   const loadNotifications = useCallback(
     () => notificationApi.getNotifications(),
     [],
@@ -195,68 +195,4 @@ function getAreaLabel(area: NotificationCenterProps['area']) {
   }
 
   return 'relawan'
-}
-
-function getFallbackNotifications(area: NotificationCenterProps['area']): ApiNotification[] {
-  if (area === 'admin') {
-    return [
-      {
-        id: 'admin-org',
-        kind: 'moderation' as const,
-        title: '2 organizer menunggu verifikasi',
-        description: 'Review profil organizer sebelum event baru dipublikasikan.',
-        time: 'Hari ini',
-      },
-      {
-        id: 'admin-event',
-        kind: 'applicant' as const,
-        title: '8 event aktif minggu ini',
-        description: 'Pantau event dengan keterisian hampir penuh.',
-        time: '2 jam lalu',
-      },
-    ]
-  }
-
-  if (area === 'organizer') {
-    return [
-      {
-        id: 'org-review',
-        kind: 'applicant' as const,
-        title: 'Applicant baru perlu review',
-        description: 'Bersih Sungai Gajah Wong memiliki pendaftar baru.',
-        time: '30 menit lalu',
-      },
-      {
-        id: 'org-checkin',
-        kind: 'reminder' as const,
-        title: 'Siapkan check-in relawan',
-        description: 'Event weekend membutuhkan attendance tracking.',
-        time: 'Besok',
-      },
-    ]
-  }
-
-  return [
-    {
-      id: 'vol-accepted',
-      kind: 'accepted' as const,
-      title: 'Aplikasi diterima',
-      description: 'Kelas Inspirasi Anak Kali Code siap masuk tahap briefing.',
-      time: 'Hari ini',
-    },
-    {
-      id: 'vol-reminder',
-      kind: 'reminder' as const,
-      title: 'Briefing dimulai besok',
-      description: 'Cek jadwal dan availability sebelum kegiatan.',
-      time: 'Besok 19.00',
-    },
-    {
-      id: 'vol-certificate',
-      kind: 'certificate' as const,
-      title: 'Sertifikat siap diunduh',
-      description: 'Perpustakaan Pop-up Kampung sudah menerbitkan credential.',
-      time: '2 hari lalu',
-    },
-  ]
 }
