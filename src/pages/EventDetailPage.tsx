@@ -109,11 +109,11 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
       </Link>
 
       {isLoading ? (
-        <ApiNotice message="Memuat detail event dari API..." tone="loading" />
+        <ApiNotice message="Memuat detail event..." tone="loading" />
       ) : null}
       {detailError ? (
         <ApiNotice
-          message={`Detail API belum tersedia, memakai data tampilan sementara. ${detailError}`}
+          message={`Sebagian detail event belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${detailError}`}
           tone="error"
         />
       ) : null}

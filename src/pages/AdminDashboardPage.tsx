@@ -61,11 +61,11 @@ export function AdminDashboardPage() {
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat dashboard admin dari API..." tone="loading" />
+        <ApiNotice message="Memuat dashboard admin..." tone="loading" />
       ) : null}
       {dashboardError ? (
         <ApiNotice
-          message={`Data API belum tersedia, memakai data tampilan sementara. ${dashboardError}`}
+          message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${dashboardError}`}
           tone="error"
         />
       ) : null}

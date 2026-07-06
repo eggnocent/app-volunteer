@@ -127,7 +127,7 @@ export function HomePage() {
                 Cari event, daftar, lalu bangun portofolio kontribusi.
               </h2>
               <p className="mt-3 text-sm leading-6">
-                Masuk sebagai relawan untuk membuka apply flow, dashboard aplikasi,
+                Masuk sebagai relawan untuk mendaftar event, memantau aplikasi,
                 sertifikat, dan impact summary.
               </p>
               <Link
@@ -165,11 +165,11 @@ export function HomePage() {
       </section>
 
       {isLoading ? (
-        <ApiNotice message="Memuat beranda dari API..." tone="loading" />
+        <ApiNotice message="Memuat beranda..." tone="loading" />
       ) : null}
       {homeError ? (
         <ApiNotice
-          message={`Data API belum tersedia, memakai data tampilan sementara. ${homeError}`}
+          message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${homeError}`}
           tone="error"
         />
       ) : null}

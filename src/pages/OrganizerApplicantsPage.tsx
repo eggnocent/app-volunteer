@@ -221,11 +221,11 @@ export function OrganizerApplicantsPage() {
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat applicant dari API..." tone="loading" />
+        <ApiNotice message="Memuat applicant..." tone="loading" />
       ) : null}
       {applicantsError ? (
         <ApiNotice
-          message={`Data API belum tersedia, memakai applicant tampilan sementara. ${applicantsError}`}
+          message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${applicantsError}`}
           tone="error"
         />
       ) : null}
@@ -493,11 +493,11 @@ function ApplicantDetailModal({
         <div className="grid gap-5 p-5 md:grid-cols-[1fr_240px]">
           <div className="space-y-5">
             {isLoading ? (
-              <ApiNotice message="Memuat detail applicant dari API..." tone="loading" />
+              <ApiNotice message="Memuat detail applicant..." tone="loading" />
             ) : null}
             {error ? (
               <ApiNotice
-                message={`Detail API belum tersedia, memakai data list. ${error}`}
+                message={`Sebagian detail applicant belum bisa dimuat. Menampilkan informasi dari daftar utama. ${error}`}
                 tone="error"
               />
             ) : null}

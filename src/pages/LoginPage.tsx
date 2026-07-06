@@ -64,7 +64,7 @@ export function LoginPage() {
               className="flex items-center gap-2 text-sm font-semibold text-primary-foreground/60 transition hover:text-primary-foreground"
             >
               <HeartHandshake size={14} />
-              Lihat discover page →
+              Lihat halaman discover →
             </Link>
             <Link
               to="/organizer/register"

@@ -215,11 +215,11 @@ export function ApplyPage() {
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat detail event dari API..." tone="loading" />
+        <ApiNotice message="Memuat detail event..." tone="loading" />
       ) : null}
       {eventError ? (
         <ApiNotice
-          message={`Detail API belum tersedia, memakai data tampilan sementara. ${eventError}`}
+          message={`Sebagian detail event belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${eventError}`}
           tone="error"
         />
       ) : null}

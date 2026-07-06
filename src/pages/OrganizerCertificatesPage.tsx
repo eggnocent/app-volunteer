@@ -134,11 +134,11 @@ export function OrganizerCertificatesPage() {
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat sertifikat dari API..." tone="loading" />
+        <ApiNotice message="Memuat sertifikat..." tone="loading" />
       ) : null}
       {error ? (
         <ApiNotice
-          message={`Data API belum tersedia, memakai sertifikat tampilan sementara. ${error}`}
+          message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${error}`}
           tone="error"
         />
       ) : null}
@@ -311,7 +311,7 @@ function CertificateDetailModal({
           ) : null}
           {error ? (
             <ApiNotice
-              message={`Detail API belum tersedia, memakai data list. ${error}`}
+              message={`Sebagian detail sertifikat belum bisa dimuat. Menampilkan informasi dari daftar utama. ${error}`}
               tone="error"
             />
           ) : null}

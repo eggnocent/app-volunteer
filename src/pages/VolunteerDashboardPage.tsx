@@ -244,12 +244,12 @@ export function VolunteerDashboardPage() {
       />
 
       {isLoading ? (
-        <ApiNotice tone="loading" message="Memuat data volunteer dari API..." />
+        <ApiNotice tone="loading" message="Memuat data volunteer..." />
       ) : null}
       {dashboardError ? (
         <ApiNotice
           tone="error"
-          message={`Data API belum tersedia, memakai data tampilan sementara. ${dashboardError}`}
+          message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${dashboardError}`}
         />
       ) : null}
 

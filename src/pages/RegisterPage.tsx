@@ -148,8 +148,8 @@ export function RegisterPage({ role }: RegisterPageProps) {
               Akun {isOrganizer ? 'organizer' : 'relawan'} siap digunakan.
             </h1>
             <p className="mt-4 max-w-2xl leading-7 text-primary-foreground/78">
-              Data akun sudah dikirim ke backend dan sesi login dibuat lewat
-              Sanctum. Dashboard masih memakai data tampilan sementara.
+              Akunmu sudah aktif. Kamu bisa langsung melanjutkan ke dashboard
+              untuk mulai mengelola aktivitas Migunani.
             </p>
           </div>
           <div className="flex flex-col gap-3 p-6 sm:flex-row">
@@ -342,8 +342,8 @@ export function RegisterPage({ role }: RegisterPageProps) {
           </h1>
           <p className="mt-5 max-w-xl text-base leading-8 text-primary-foreground/78">
             {isOrganizer
-              ? 'Path organizer sudah terpisah, jadi form ini langsung membuat akun organizer tanpa pilihan role tambahan.'
-              : 'Path relawan sudah terpisah, jadi form ini langsung membuat akun relawan tanpa pilihan role tambahan.'}
+              ? 'Form ini dibuat khusus untuk organisasi yang ingin membuka dan mengelola event.'
+              : 'Form ini dibuat khusus untuk relawan yang ingin mengikuti kegiatan Migunani.'}
           </p>
           <div className="mt-8 space-y-3">
             <FeatureRow
@@ -380,8 +380,8 @@ export function RegisterPage({ role }: RegisterPageProps) {
             </h2>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
               {isOrganizer
-                ? 'Isi informasi dasar organisasi. Setelah onboarding selesai, akun dibuat melalui backend.'
-                : 'Isi informasi dasar relawan. Setelah onboarding selesai, akun dibuat melalui backend.'}
+                ? 'Isi informasi dasar organisasi untuk menyiapkan akses organizer.'
+                : 'Isi informasi dasar relawan untuk menyiapkan akses dashboard.'}
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-2">

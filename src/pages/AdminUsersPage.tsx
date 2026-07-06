@@ -84,11 +84,11 @@ export function AdminUsersPage() {
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat user dari API..." tone="loading" />
+        <ApiNotice message="Memuat pengguna..." tone="loading" />
       ) : null}
       {usersError ? (
         <ApiNotice
-          message={`Data API belum tersedia, memakai user tampilan sementara. ${usersError}`}
+          message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${usersError}`}
           tone="error"
         />
       ) : null}

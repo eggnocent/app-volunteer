@@ -10,8 +10,8 @@ export function OrganizerLoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { login, status } = useAuth()
-  const [email, setEmail] = useState('bagus.setiawan@mail.com')
-  const [password, setPassword] = useState('prototype123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
   const nextParam = searchParams.get('next')
   const nextHref = nextParam?.startsWith('/organizer/')
@@ -124,7 +124,7 @@ export function OrganizerLoginPage() {
               <ArrowRight size={17} />
             </button>
             <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">
-              Login memakai endpoint backend dan sesi Sanctum.
+              Akses akun organizer dengan aman untuk melanjutkan aktivitas di Migunani.
             </p>
             <p className="mt-3 text-center text-xs font-semibold text-muted-foreground">
               Belum punya akun organizer?{' '}

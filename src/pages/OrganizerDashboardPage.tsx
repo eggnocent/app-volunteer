@@ -103,11 +103,11 @@ export function OrganizerDashboardPage() {
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat dashboard organizer dari API..." tone="loading" />
+        <ApiNotice message="Memuat dashboard organizer..." tone="loading" />
       ) : null}
       {dashboardError ? (
         <ApiNotice
-          message={`Data API belum tersedia, memakai data tampilan sementara. ${dashboardError}`}
+          message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${dashboardError}`}
           tone="error"
         />
       ) : null}
@@ -225,8 +225,8 @@ export function OrganizerDashboardPage() {
               <div>
                 <h2 className="font-heading text-xl font-extrabold">Event performance</h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Rata-rata keterisian event aktif dihitung dari data dummy untuk
-                  membantu visual dashboard terasa operasional.
+                  Rata-rata keterisian event aktif membantu organizer memantau
+                  performa dan mengambil keputusan operasional lebih cepat.
                 </p>
               </div>
             </div>

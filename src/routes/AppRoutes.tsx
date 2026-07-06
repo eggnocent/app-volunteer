@@ -1,11 +1,10 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppLayout } from '@/layouts/AppLayout'
 import { DashboardLayout } from '@/layouts/DashboardLayout'
 import { AdminDashboardPage } from '@/pages/AdminDashboardPage'
 import { AdminEventsPage } from '@/pages/AdminEventsPage'
 import { AdminOrganizersPage } from '@/pages/AdminOrganizersPage'
-import { AdminPortalPage } from '@/pages/AdminPortalPage'
 import { AdminUsersPage } from '@/pages/AdminUsersPage'
 import { ApplyPage } from '@/pages/ApplyPage'
 import { CreateEventPage } from '@/pages/CreateEventPage'
@@ -17,7 +16,6 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { OrganizerApplicantsPage } from '@/pages/OrganizerApplicantsPage'
 import { OrganizerCertificatesPage } from '@/pages/OrganizerCertificatesPage'
 import { OrganizerDashboardPage } from '@/pages/OrganizerDashboardPage'
-import { OrganizerLoginPage } from '@/pages/OrganizerLoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { VolunteerDashboardPage } from '@/pages/VolunteerDashboardPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
@@ -33,12 +31,18 @@ export function AppRoutes() {
         <Route path="events/:slug" element={<EventDetailPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage role="volunteer" />} />
-        <Route path="organizer" element={<OrganizerLoginPage />} />
+        <Route
+          path="organizer"
+          element={<Navigate to="/?next=%2Forganizer%2Fdashboard" replace />}
+        />
         <Route
           path="organizer/register"
           element={<RegisterPage role="organizer" />}
         />
-        <Route path="portal" element={<AdminPortalPage />} />
+        <Route
+          path="portal"
+          element={<Navigate to="/?next=%2Fportal%2Fdashboard" replace />}
+        />
       </Route>
 
       {/* Super Admin area — /portal/* */}

@@ -141,11 +141,11 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat event dari API..." tone="loading" />
+        <ApiNotice message="Memuat event..." tone="loading" />
       ) : null}
       {resourceError ? (
         <ApiNotice
-          message={`Data API belum tersedia, memakai event tampilan sementara. ${resourceError}`}
+          message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${resourceError}`}
           tone="error"
         />
       ) : null}

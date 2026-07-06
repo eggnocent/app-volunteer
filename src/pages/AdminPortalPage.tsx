@@ -10,8 +10,8 @@ export function AdminPortalPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { login, status } = useAuth()
-  const [email, setEmail] = useState('admin@migunani.id')
-  const [password, setPassword] = useState('prototype123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
   const nextParam = searchParams.get('next')
   const nextHref = nextParam?.startsWith('/portal/')
@@ -124,7 +124,7 @@ export function AdminPortalPage() {
               <ArrowRight size={17} />
             </button>
             <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">
-              Login memakai endpoint backend dan sesi Sanctum.
+              Akses akun admin dengan aman untuk mengelola platform Migunani.
             </p>
           </form>
         </div>

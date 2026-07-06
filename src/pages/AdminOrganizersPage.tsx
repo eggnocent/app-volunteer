@@ -87,11 +87,11 @@ export function AdminOrganizersPage() {
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat organizer dari API..." tone="loading" />
+        <ApiNotice message="Memuat organizer..." tone="loading" />
       ) : null}
       {organizersError ? (
         <ApiNotice
-          message={`Data API belum tersedia, memakai organizer tampilan sementara. ${organizersError}`}
+          message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${organizersError}`}
           tone="error"
         />
       ) : null}

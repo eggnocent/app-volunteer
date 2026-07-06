@@ -59,7 +59,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
     'Content & Documentation',
   ])
   const [published, setPublished] = useState(false)
-  const [isPublishing, setIsPublishing] = useState(false)
+  const [isSavingEvent, setIsSavingEvent] = useState(false)
   const [isLoadingEvent, setIsLoadingEvent] = useState(isEditMode)
   const [publishError, setPublishError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -174,7 +174,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
 
   async function publishPreview() {
     const organizerId = user?.organizerId ?? fallbackOrganizerId
-    setIsPublishing(true)
+    setIsSavingEvent(true)
     setPublishError(null)
 
     try {
@@ -202,11 +202,11 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
         await organizerApi.createOrganizerEvent(organizerId, payload)
       }
 
-      setIsPublishing(false)
+      setIsSavingEvent(false)
       setPublished(true)
     } catch (error) {
       setPublishError(getErrorMessage(error))
-      setIsPublishing(false)
+      setIsSavingEvent(false)
     }
   }
 
@@ -229,25 +229,25 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
         }
         description={
           isEditMode
-            ? 'Perbarui informasi event yang sudah tersimpan di backend organizer.'
+            ? 'Perbarui informasi event yang sudah tersimpan di dashboard organizer.'
             : 'Organizer bisa melihat bagaimana event akan tampil di marketplace sebelum dipublikasikan.'
         }
         action={
           <button
             type="button"
             onClick={publishPreview}
-            disabled={isPublishing || isLoadingEvent}
+            disabled={isSavingEvent || isLoadingEvent}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
           >
-            {isPublishing ? (
+            {isSavingEvent ? (
               <>
                 <span className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                Publishing...
+                Menyimpan...
               </>
             ) : (
               <>
                 <CalendarPlus size={17} />
-                {isEditMode ? 'Simpan perubahan' : 'Publish preview'}
+                {isEditMode ? 'Simpan perubahan' : 'Publikasikan event'}
               </>
             )}
           </button>
@@ -256,13 +256,13 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
 
       {isLoadingEvent ? (
         <section className="rounded-lg border bg-accent p-4 text-sm font-semibold text-accent-foreground">
-          Memuat data event dari API...
+          Memuat data event...
         </section>
       ) : null}
 
       {loadError ? (
         <section className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm font-semibold text-destructive">
-          Data event belum bisa dimuat. Form tetap memakai data tampilan sementara. {loadError}
+          Data event belum bisa dimuat. Form menampilkan informasi terakhir yang tersedia. {loadError}
         </section>
       ) : null}
 
@@ -274,11 +274,11 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
               <h2 className="font-heading text-xl font-extrabold">
                 {isEditMode
                   ? 'Perubahan event berhasil disimpan.'
-                  : 'Preview event berhasil dibuat.'}
+                  : 'Event berhasil dipublikasikan.'}
               </h2>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Event sudah dikirim ke backend dan akan tampil mengikuti status
-                publikasi dari API organizer.
+                Event sudah tersimpan dan akan tampil mengikuti status publikasi
+                yang berlaku di dashboard organizer.
               </p>
             </div>
           </div>

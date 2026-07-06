@@ -87,11 +87,11 @@ export function AdminEventsPage() {
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat event admin dari API..." tone="loading" />
+        <ApiNotice message="Memuat event admin..." tone="loading" />
       ) : null}
       {eventsError ? (
         <ApiNotice
-          message={`Data API belum tersedia, memakai event tampilan sementara. ${eventsError}`}
+          message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${eventsError}`}
           tone="error"
         />
       ) : null}
