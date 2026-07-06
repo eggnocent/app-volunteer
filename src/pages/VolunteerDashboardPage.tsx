@@ -21,6 +21,7 @@ import {
   CategoryChip,
   CertificateCard,
   ConfirmDialog,
+  Dialog,
   EventCard,
   PageHeader,
   StatsCard,
@@ -409,66 +410,21 @@ export function VolunteerDashboardPage() {
         />
       ) : null}
 
-      {/* 1. Modal Preview Sertifikat Interaktif */}
       {selectedCert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl overflow-hidden rounded-lg border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            {/* Header Modal */}
-            <div className="flex items-center justify-between border-b px-5 py-4">
-              <span className="flex items-center gap-2 text-sm font-bold text-foreground">
-                <FileCheck size={18} className="text-primary" />
-                Certificate Preview
-              </span>
-              <button
-                onClick={() => setSelectedCert(null)}
-                className="rounded-full p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Sertifikat Visual (Landscape certificate style) */}
-            <div className="p-6 bg-muted/30">
-              <div className="relative overflow-hidden rounded-lg border bg-card p-8 shadow-inner text-center">
-                {/* Background decorative elements */}
-                <div className="absolute inset-0 border-[16px] border-double border-primary/10 pointer-events-none" />
-                <div className="absolute right-0 top-0 translate-x-12 translate-y-[-12px] opacity-5">
-                  <Award size={200} />
-                </div>
-
-                <p className="font-heading text-xs font-bold uppercase tracking-widest text-primary">
-                  Sertifikat Penghargaan
-                </p>
-                <h3 className="mt-4 font-serif text-3xl font-bold italic text-foreground">
-                  {dashboard.profile.name}
-                </h3>
-                <p className="mt-3 text-sm max-w-md mx-auto text-muted-foreground">
-                  telah berkontribusi secara luar biasa sebagai relawan dalam kegiatan
-                </p>
-                <h4 className="mt-3 font-heading text-lg font-extrabold text-primary">
-                    {getEventTitle(dashboard.eventLookup, selectedCert.eventId)}
-                </h4>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  dengan total kontribusi sebesar <strong className="text-foreground">{selectedCert.hours} Jam Kerja Sosial</strong>.
-                </p>
-
-                <div className="mt-8 grid grid-cols-2 gap-4 border-t pt-6 text-left">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase text-muted-foreground">ID Kredensial</span>
-                    <p className="font-mono text-xs font-bold text-foreground">{selectedCert.credentialId}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase text-muted-foreground">Tanggal Terbit</span>
-                    <p className="text-xs font-bold text-foreground">{formatDate(selectedCert.issuedAt)}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Signatures & Download Action bar */}
-            <div className="flex items-center justify-between border-t px-6 py-4 bg-card">
+        <Dialog
+          open
+          title="Preview Sertifikat"
+          description={`Credential ${selectedCert.credentialId}`}
+          icon={<FileCheck size={18} />}
+          className="max-w-2xl"
+          bodyClassName="p-0"
+          footerClassName="sm:items-center sm:justify-between"
+          isDismissDisabled={isDownloading}
+          onClose={() => setSelectedCert(null)}
+          footer={
+            <>
               {downloadSuccess ? (
-                <span className="flex items-center gap-2 text-xs font-bold text-primary animate-in fade-in slide-in-from-left-2">
+                <span className="flex items-center gap-2 text-xs font-bold text-primary">
                   <CheckCircle2 size={14} />
                   Sertifikat berhasil diunduh.
                 </span>
@@ -477,17 +433,20 @@ export function VolunteerDashboardPage() {
                   Diterbitkan secara sah oleh tim Migunani & Partner.
                 </span>
               )}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
                 <button
+                  type="button"
+                  disabled={isDownloading}
                   onClick={() => setSelectedCert(null)}
-                  className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted"
+                  className="h-10 rounded-md border bg-card px-4 text-sm font-semibold transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Tutup
                 </button>
                 <button
+                  type="button"
                   onClick={triggerDownload}
                   disabled={isDownloading}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:opacity-75"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:cursor-not-allowed disabled:opacity-75"
                 >
                   {isDownloading ? (
                     <>
@@ -504,12 +463,48 @@ export function VolunteerDashboardPage() {
                   )}
                 </button>
               </div>
+            </>
+          }
+        >
+          <div className="bg-muted/30 p-4 sm:p-6">
+            <div className="relative overflow-hidden rounded-lg border bg-card p-5 text-center shadow-inner sm:p-8">
+              {/* Background decorative elements */}
+              <div className="pointer-events-none absolute inset-0 border-[16px] border-double border-primary/10" />
+              <div className="absolute right-0 top-0 translate-x-12 translate-y-[-12px] opacity-5">
+                <Award size={200} />
+              </div>
+
+              <p className="font-heading text-xs font-bold uppercase tracking-widest text-primary">
+                Sertifikat Penghargaan
+              </p>
+              <h3 className="mt-4 font-serif text-2xl font-bold italic text-foreground sm:text-3xl">
+                {dashboard.profile.name}
+              </h3>
+              <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
+                telah berkontribusi secara luar biasa sebagai relawan dalam kegiatan
+              </p>
+              <h4 className="mt-3 font-heading text-lg font-extrabold text-primary">
+                {getEventTitle(dashboard.eventLookup, selectedCert.eventId)}
+              </h4>
+              <p className="mt-2 text-xs text-muted-foreground">
+                dengan total kontribusi sebesar <strong className="text-foreground">{selectedCert.hours} Jam Kerja Sosial</strong>.
+              </p>
+
+              <div className="mt-8 grid gap-4 border-t pt-6 text-left sm:grid-cols-2">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground">ID Kredensial</span>
+                  <p className="break-all font-mono text-xs font-bold text-foreground">{selectedCert.credentialId}</p>
+                </div>
+                <div className="sm:text-right">
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground">Tanggal Terbit</span>
+                  <p className="text-xs font-bold text-foreground">{formatDate(selectedCert.issuedAt)}</p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
 
-      {/* 2. Dialog Konfirmasi Pembatalan Pendaftaran */}
       {appToCancel ? (
         <ConfirmDialog
           tone="danger"

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
-import { ConfirmDialog, PageHeader, StatsCard } from '@/components'
+import { ConfirmDialog, Dialog, PageHeader, StatsCard } from '@/components'
 import { certificates, getEventById, getOrganizerById, platformUsers } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate } from '@/lib/format'
@@ -340,49 +340,22 @@ function CertificateDetailModal({
   const status = detail.status ?? 'Issued'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <section className="w-full max-w-xl overflow-hidden rounded-lg border bg-card shadow-2xl">
-        <div className="bg-deep-green p-6 text-primary-foreground">
-          <Award size={28} className="text-secondary" />
-          <p className="mt-5 text-sm font-bold uppercase text-primary-foreground/70">
-            Certificate detail
-          </p>
-          <h2 className="mt-2 font-heading text-3xl font-extrabold">
-            {detail.volunteerName ?? 'Relawan Migunani'}
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-primary-foreground/78">
-            {detail.eventTitle ?? getEventById(detail.eventId)?.title ?? 'Event Migunani'}
-          </p>
-        </div>
-        <div className="space-y-4 p-6">
-          {isLoading ? (
-            <ApiNotice message="Memuat detail sertifikat..." tone="loading" />
-          ) : null}
-          {error ? (
-            <ApiNotice
-              message={`Sebagian detail sertifikat belum bisa dimuat. Menampilkan informasi dari daftar utama. ${error}`}
-              tone="error"
-            />
-          ) : null}
-          <DetailRow label="Credential ID" value={detail.credentialId} />
-          {detail.replacementCredentialId ? (
-            <DetailRow
-              label="Replacement"
-              value={detail.replacementCredentialId}
-            />
-          ) : null}
-          <DetailRow label="Tanggal terbit" value={formatDate(detail.issuedAt)} />
-          <DetailRow label="Jam kontribusi" value={`${detail.hours} jam`} />
-          <div className="flex items-center justify-between gap-4 rounded-md bg-muted p-3">
-            <span className="text-sm font-semibold text-muted-foreground">Status</span>
-            <CertificateStatusBadge status={status} />
-          </div>
-        </div>
-        <div className="flex flex-col gap-3 border-t bg-muted/40 p-5 sm:flex-row sm:justify-end">
+    <Dialog
+      open
+      title={detail.volunteerName ?? 'Relawan Migunani'}
+      description={detail.eventTitle ?? getEventById(detail.eventId)?.title ?? 'Event Migunani'}
+      icon={<Award size={18} />}
+      className="max-w-xl"
+      bodyClassName="space-y-4 p-6"
+      isDismissDisabled={isPending}
+      onClose={onClose}
+      footer={
+        <>
           <button
             type="button"
+            disabled={isPending}
             onClick={onClose}
-            className="inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted"
+            className="inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
             Tutup
           </button>
@@ -408,9 +381,32 @@ function CertificateDetailModal({
               </button>
             </>
           ) : null}
-        </div>
-      </section>
-    </div>
+        </>
+      }
+    >
+      {isLoading ? (
+        <ApiNotice message="Memuat detail sertifikat..." tone="loading" />
+      ) : null}
+      {error ? (
+        <ApiNotice
+          message={`Sebagian detail sertifikat belum bisa dimuat. Menampilkan informasi dari daftar utama. ${error}`}
+          tone="error"
+        />
+      ) : null}
+      <DetailRow label="Credential ID" value={detail.credentialId} />
+      {detail.replacementCredentialId ? (
+        <DetailRow
+          label="Replacement"
+          value={detail.replacementCredentialId}
+        />
+      ) : null}
+      <DetailRow label="Tanggal terbit" value={formatDate(detail.issuedAt)} />
+      <DetailRow label="Jam kontribusi" value={`${detail.hours} jam`} />
+      <div className="flex items-center justify-between gap-4 rounded-md bg-muted p-3">
+        <span className="text-sm font-semibold text-muted-foreground">Status</span>
+        <CertificateStatusBadge status={status} />
+      </div>
+    </Dialog>
   )
 }
 

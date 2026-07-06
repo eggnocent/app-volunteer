@@ -11,7 +11,7 @@ import {
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { CategoryChip, ConfirmDialog, PageHeader, StatsCard, StatusBadge } from '@/components'
+import { CategoryChip, ConfirmDialog, Dialog, PageHeader, StatsCard, StatusBadge } from '@/components'
 import {
   getEventById,
   getOrganizerById,
@@ -554,104 +554,25 @@ function ApplicantDetailModal({
   ].filter(Boolean)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <section className="w-full max-w-2xl overflow-hidden rounded-lg border bg-card shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b p-5">
-          <div>
-            <p className="text-sm font-bold uppercase text-primary">
-              Applicant detail
-            </p>
-            <h2 className="mt-1 font-heading text-2xl font-extrabold">
-              {volunteerName}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {volunteerProfileLine}
-            </p>
-          </div>
+    <Dialog
+      open
+      title={volunteerName}
+      description={volunteerProfileLine}
+      icon={<Users size={18} />}
+      className="max-w-2xl"
+      bodyClassName="grid gap-5 p-5 md:grid-cols-[1fr_240px]"
+      isDismissDisabled={isPending}
+      onClose={onClose}
+      footer={
+        <>
           <button
             type="button"
+            disabled={isPending}
             onClick={onClose}
-            className="inline-flex size-9 items-center justify-center rounded-md border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            aria-label="Tutup detail applicant"
+            className="inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <X size={17} />
+            Tutup
           </button>
-        </div>
-
-        <div className="grid gap-5 p-5 md:grid-cols-[1fr_240px]">
-          <div className="space-y-5">
-            {isLoading ? (
-              <ApiNotice message="Memuat detail applicant..." tone="loading" />
-            ) : null}
-            {error ? (
-              <ApiNotice
-                message={`Sebagian detail applicant belum bisa dimuat. Menampilkan informasi dari daftar utama. ${error}`}
-                tone="error"
-              />
-            ) : null}
-            <DetailBlock label="Event" value={event?.title ?? 'Event Migunani'} />
-            <DetailBlock label="Role dipilih" value={application.role} />
-            <div>
-              <p className="text-xs font-bold uppercase text-muted-foreground">
-                Motivasi
-              </p>
-              <p className="mt-2 rounded-md bg-muted p-3 text-sm leading-6 text-muted-foreground">
-                {motivation}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase text-muted-foreground">
-                Availability
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {availability.map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-accent-foreground"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <aside className="space-y-4">
-            <section className="rounded-lg border bg-deep-green p-4 text-primary-foreground">
-              <p className="text-xs font-bold uppercase text-primary-foreground/70">
-                Review signal
-              </p>
-              <h3 className="mt-2 font-heading text-2xl font-extrabold">
-                Rekomendasi: review
-              </h3>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {matchNotes.map((note) => (
-                  <span
-                    key={note}
-                    className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold"
-                  >
-                    {note}
-                  </span>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-lg border bg-card p-4">
-              <p className="text-xs font-bold uppercase text-muted-foreground">
-                Attendance
-              </p>
-              <p className="mt-2 text-sm font-bold text-foreground">
-                {checkedIn ? 'Relawan sudah check-in' : 'Belum check-in'}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Simulasi check-in ini membantu organizer melihat siapa yang hadir di
-                hari kegiatan.
-              </p>
-            </section>
-          </aside>
-        </div>
-
-        <div className="flex flex-col gap-3 border-t bg-muted/40 p-5 sm:flex-row sm:justify-end">
           {application.status === 'Submitted' ? (
             <>
               <button
@@ -693,18 +614,81 @@ function ApplicantDetailModal({
               <CheckCircle2 size={16} />
               {isPending ? 'Menerbitkan...' : 'Terbitkan sertifikat'}
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted"
-            >
-              Tutup
-            </button>
-          )}
+          ) : null}
+        </>
+      }
+    >
+      <div className="space-y-5">
+        {isLoading ? (
+          <ApiNotice message="Memuat detail applicant..." tone="loading" />
+        ) : null}
+        {error ? (
+          <ApiNotice
+            message={`Sebagian detail applicant belum bisa dimuat. Menampilkan informasi dari daftar utama. ${error}`}
+            tone="error"
+          />
+        ) : null}
+        <DetailBlock label="Event" value={event?.title ?? 'Event Migunani'} />
+        <DetailBlock label="Role dipilih" value={application.role} />
+        <div>
+          <p className="text-xs font-bold uppercase text-muted-foreground">
+            Motivasi
+          </p>
+          <p className="mt-2 rounded-md bg-muted p-3 text-sm leading-6 text-muted-foreground">
+            {motivation}
+          </p>
         </div>
-      </section>
-    </div>
+        <div>
+          <p className="text-xs font-bold uppercase text-muted-foreground">
+            Availability
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {availability.map((item) => (
+              <span
+                key={item}
+                className="rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-accent-foreground"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <aside className="space-y-4">
+        <section className="rounded-lg border bg-deep-green p-4 text-primary-foreground">
+          <p className="text-xs font-bold uppercase text-primary-foreground/70">
+            Review signal
+          </p>
+          <h3 className="mt-2 font-heading text-2xl font-extrabold">
+            Rekomendasi: review
+          </h3>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {matchNotes.map((note) => (
+              <span
+                key={note}
+                className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold"
+              >
+                {note}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-lg border bg-card p-4">
+          <p className="text-xs font-bold uppercase text-muted-foreground">
+            Attendance
+          </p>
+          <p className="mt-2 text-sm font-bold text-foreground">
+            {checkedIn ? 'Relawan sudah check-in' : 'Belum check-in'}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Simulasi check-in ini membantu organizer melihat siapa yang hadir di
+            hari kegiatan.
+          </p>
+        </section>
+      </aside>
+    </Dialog>
   )
 }
 

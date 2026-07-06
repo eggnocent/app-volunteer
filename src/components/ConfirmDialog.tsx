@@ -1,3 +1,7 @@
+import { useRef } from 'react'
+
+import { Dialog } from '@/components/Dialog'
+
 type ConfirmDialogProps = {
   title: string
   description: string
@@ -19,27 +23,25 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const confirmClassName =
     tone === 'danger'
       ? 'bg-destructive text-destructive-foreground hover:bg-red-700'
       : 'bg-primary text-primary-foreground hover:bg-deep-green'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        className="w-full max-w-md rounded-lg border bg-card p-6 shadow-2xl"
-      >
-        <h2 id="confirm-dialog-title" className="font-heading text-xl font-extrabold">
-          {title}
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          {description}
-        </p>
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+    <Dialog
+      open
+      title={title}
+      description={description}
+      className="max-w-md"
+      isDismissDisabled={isPending}
+      initialFocusRef={cancelButtonRef}
+      onClose={onCancel}
+      footer={
+        <>
           <button
+            ref={cancelButtonRef}
             type="button"
             disabled={isPending}
             onClick={onCancel}
@@ -58,8 +60,8 @@ export function ConfirmDialog({
             ) : null}
             {confirmLabel}
           </button>
-        </div>
-      </section>
-    </div>
+        </>
+      }
+    />
   )
 }

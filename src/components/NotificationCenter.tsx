@@ -7,7 +7,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { cn } from '@/lib/utils'
@@ -29,6 +29,10 @@ const notificationIcons = {
 export function NotificationCenter({ area }: NotificationCenterProps) {
   const [open, setOpen] = useState(false)
   const [readIds, setReadIds] = useState<string[]>([])
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLElement>(null)
+  const panelId = useId()
+  const titleId = useId()
   const fallbackNotifications = useMemo<ApiNotification[]>(() => [], [])
   const loadNotifications = useCallback(
     () => notificationApi.getNotifications(),
@@ -43,6 +47,59 @@ export function NotificationCenter({ area }: NotificationCenterProps) {
   const unreadCount = notifications.filter(
     (notification) => !notification.readAt && !readIds.includes(notification.id),
   ).length
+  const closePanel = useCallback((restoreFocus = false) => {
+    setOpen(false)
+
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => {
+        buttonRef.current?.focus({ preventScroll: true })
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      panelRef.current?.focus({ preventScroll: true })
+    })
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target
+
+      if (!(target instanceof Node)) {
+        return
+      }
+
+      if (
+        panelRef.current?.contains(target) ||
+        buttonRef.current?.contains(target)
+      ) {
+        return
+      }
+
+      closePanel()
+    }
+
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key !== 'Escape') {
+        return
+      }
+
+      event.preventDefault()
+      closePanel(true)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [closePanel, open])
 
   async function markAsRead(id: string) {
     const wasRead = readIds.includes(id)
@@ -77,10 +134,14 @@ export function NotificationCenter({ area }: NotificationCenterProps) {
   return (
     <div className="relative flex justify-end">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="relative inline-flex h-10 items-center justify-center gap-2 rounded-md border bg-card px-3 text-sm font-bold shadow-sm transition hover:bg-muted"
-        aria-label="Buka notifikasi"
+        aria-label={open ? 'Tutup notifikasi' : 'Buka notifikasi'}
+        aria-controls={open ? panelId : undefined}
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
         <Bell size={17} />
         <span className="hidden sm:inline">Notifikasi</span>
@@ -92,19 +153,26 @@ export function NotificationCenter({ area }: NotificationCenterProps) {
       </button>
 
       {open ? (
-        <section className="absolute right-0 top-12 z-40 w-[min(360px,calc(100vw-1.5rem))] overflow-hidden rounded-lg border bg-card shadow-xl">
+        <section
+          ref={panelRef}
+          id={panelId}
+          role="dialog"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          className="absolute right-0 top-12 z-40 flex max-h-[min(560px,calc(100svh-5rem))] w-[min(360px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-lg border bg-card shadow-xl outline-none"
+        >
           <div className="flex items-center justify-between border-b p-4">
             <div>
               <p className="text-xs font-bold uppercase text-primary">
                 Notification center
               </p>
-              <h2 className="font-heading text-lg font-extrabold">
+              <h2 id={titleId} className="font-heading text-lg font-extrabold">
                 Update {getAreaLabel(area)}
               </h2>
             </div>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={() => closePanel(true)}
               className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
               aria-label="Tutup notifikasi"
             >
@@ -121,7 +189,7 @@ export function NotificationCenter({ area }: NotificationCenterProps) {
             </button>
           ) : null}
 
-          <div className="max-h-[420px] divide-y overflow-y-auto">
+          <div className="min-h-0 divide-y overflow-y-auto">
             {isLoading ? (
               <div className="p-4">
                 <div className="h-14 animate-pulse rounded-md bg-muted" />
