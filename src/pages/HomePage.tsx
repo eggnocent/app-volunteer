@@ -11,7 +11,7 @@ import {
   Users,
 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { CategoryChip, EventCard, StatsCard } from '@/components'
 import {
@@ -26,6 +26,7 @@ import { useAuth } from '@/providers/useAuth'
 import type { UserRole } from '@/types/migunani'
 
 export function HomePage() {
+  const navigate = useNavigate()
   const { status, user } = useAuth()
   const isAuthenticated = status === 'authenticated' && user
   const dashboardHref = user ? getRoleHome(user.role) : '/'
@@ -93,7 +94,7 @@ export function HomePage() {
               className="rounded-lg border border-white/15 bg-white/10 p-2 backdrop-blur"
               onSubmit={(event) => {
                 event.preventDefault()
-                window.location.href = exploreHref
+                navigate(exploreHref)
               }}
             >
               <div className="grid gap-2 rounded-md bg-card p-2 text-foreground shadow-sm md:grid-cols-[1fr_auto]">

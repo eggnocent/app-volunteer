@@ -6,15 +6,20 @@ import {
 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
-import { PageHeader, StatsCard } from '@/components'
+import { ConfirmDialog, PageHeader, StatsCard } from '@/components'
 import { platformUsers } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate } from '@/lib/format'
 import { adminApi } from '@/services/api'
-import type { UserRole } from '@/types/migunani'
+import type { UserRole, UserStatus } from '@/types/migunani'
 
 type RoleFilter = UserRole | 'all'
-type StatusFilter = 'all' | 'Active' | 'Inactive' | 'Suspended'
+type StatusFilter = UserStatus | 'all'
+type PendingStatusChange = {
+  userId: string
+  userName: string
+  status: UserStatus
+}
 
 export function AdminUsersPage() {
   const loadUsers = useCallback(() => adminApi.getAdminUsers(), [])
@@ -28,6 +33,10 @@ export function AdminUsersPage() {
   const [query, setQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [pendingUserIds, setPendingUserIds] = useState<string[]>([])
+  const [pendingStatusChange, setPendingStatusChange] =
+    useState<PendingStatusChange | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const filteredUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -52,11 +61,7 @@ export function AdminUsersPage() {
   const organizerCount = visibleUsers.filter((u) => u.role === 'organizer').length
   const adminCount = visibleUsers.filter((u) => u.role === 'admin').length
 
-  async function updateStatus(userId: string, status: StatusFilter) {
-    if (status === 'all') {
-      return
-    }
-
+  async function updateStatus(userId: string, status: UserStatus) {
     const previousOverrides = userOverrides
     const baseUser = visibleUsers.find((user) => user.id === userId)
 
@@ -64,14 +69,22 @@ export function AdminUsersPage() {
       return
     }
 
+    setActionError(null)
+    setPendingUserIds((current) =>
+      current.includes(userId) ? current : [...current, userId],
+    )
     setUserOverrides((current) => upsertUser(current, { ...baseUser, status }))
 
     try {
       const updatedUser = await adminApi.updateUserStatus(userId, status)
       setUserOverrides((current) => upsertUser(current, updatedUser))
       void reload()
-    } catch {
+    } catch (error) {
       setUserOverrides(previousOverrides)
+      setActionError(getErrorMessage(error))
+    } finally {
+      setPendingUserIds((current) => current.filter((id) => id !== userId))
+      setPendingStatusChange(null)
     }
   }
 
@@ -91,6 +104,9 @@ export function AdminUsersPage() {
           message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${usersError}`}
           tone="error"
         />
+      ) : null}
+      {actionError ? (
+        <ApiNotice message={actionError} tone="error" />
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -168,7 +184,10 @@ export function AdminUsersPage() {
           <span>Status</span>
         </div>
         <div className="divide-y">
-          {filteredUsers.map((user) => (
+          {filteredUsers.map((user) => {
+            const isPending = pendingUserIds.includes(user.id)
+
+            return (
             <article
               key={user.id}
               className="grid grid-cols-[1fr_auto] gap-4 px-4 py-4 lg:grid-cols-[1fr_140px_140px_120px_100px] lg:items-center"
@@ -199,19 +218,48 @@ export function AdminUsersPage() {
               </span>
               <select
                 value={user.status}
+                disabled={isPending}
                 onChange={(event) =>
-                  void updateStatus(user.id, event.target.value as StatusFilter)
+                  setPendingStatusChange({
+                    userId: user.id,
+                    userName: user.name,
+                    status: event.target.value as UserStatus,
+                  })
                 }
-                className="h-9 rounded-md border bg-background px-2 text-xs font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                className="h-9 rounded-md border bg-background px-2 text-xs font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
                 <option value="Suspended">Suspended</option>
               </select>
             </article>
-          ))}
+            )
+          })}
         </div>
       </section>
+
+      {filteredUsers.length === 0 ? (
+        <section className="rounded-lg border bg-card p-8 text-center shadow-sm">
+          <p className="font-heading text-2xl font-extrabold">Pengguna tidak ditemukan.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Coba ubah filter role, status, atau kata kunci pencarian.
+          </p>
+        </section>
+      ) : null}
+
+      {pendingStatusChange ? (
+        <ConfirmDialog
+          tone={pendingStatusChange.status === 'Suspended' ? 'danger' : 'default'}
+          title="Ubah status pengguna?"
+          description={`${pendingStatusChange.userName} akan diubah menjadi ${pendingStatusChange.status}. Pastikan perubahan ini sesuai keputusan administrasi.`}
+          confirmLabel="Ubah status"
+          isPending={pendingUserIds.includes(pendingStatusChange.userId)}
+          onCancel={() => setPendingStatusChange(null)}
+          onConfirm={() =>
+            void updateStatus(pendingStatusChange.userId, pendingStatusChange.status)
+          }
+        />
+      ) : null}
     </div>
   )
 }
@@ -274,4 +322,12 @@ function upsertUser(users: typeof platformUsers, nextUser: (typeof platformUsers
   return hasUser
     ? users.map((user) => (user.id === nextUser.id ? nextUser : user))
     : [...users, nextUser]
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Status pengguna belum bisa diperbarui.'
 }

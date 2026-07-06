@@ -1,5 +1,6 @@
 export * from '@/components/CategoryChip'
 export * from '@/components/CertificateCard'
+export * from '@/components/ConfirmDialog'
 export * from '@/components/EventCard'
 export * from '@/components/EventDetailPanel'
 export * from '@/components/FilterBar'

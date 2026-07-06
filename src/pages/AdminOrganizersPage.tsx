@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
-import { PageHeader, StatsCard } from '@/components'
+import { ConfirmDialog, PageHeader, StatsCard } from '@/components'
 import { getOrganizerEvents, organizers } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { adminApi, mapOrganizer } from '@/services/api'
@@ -27,6 +27,13 @@ export function AdminOrganizersPage() {
   const [organizerOverrides, setOrganizerOverrides] = useState<typeof organizers>([])
   const [query, setQuery] = useState('')
   const [verifiedFilter, setVerifiedFilter] = useState<'all' | 'verified' | 'unverified'>('all')
+  const [pendingOrganizerIds, setPendingOrganizerIds] = useState<string[]>([])
+  const [pendingVerification, setPendingVerification] = useState<{
+    organizerId: string
+    organizerName: string
+    verified: boolean
+  } | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const visibleOrganizers = getVisibleOrganizers(adminOrganizers, organizerOverrides)
 
   const filteredOrganizers = useMemo(() => {
@@ -63,6 +70,10 @@ export function AdminOrganizersPage() {
       return
     }
 
+    setActionError(null)
+    setPendingOrganizerIds((current) =>
+      current.includes(organizerId) ? current : [...current, organizerId],
+    )
     setOrganizerOverrides((current) =>
       upsertOrganizer(current, { ...baseOrganizer, verified }),
     )
@@ -73,8 +84,12 @@ export function AdminOrganizersPage() {
       )
       setOrganizerOverrides((current) => upsertOrganizer(current, updatedOrganizer))
       void reload()
-    } catch {
+    } catch (error) {
       setOrganizerOverrides(previousOverrides)
+      setActionError(getErrorMessage(error))
+    } finally {
+      setPendingOrganizerIds((current) => current.filter((id) => id !== organizerId))
+      setPendingVerification(null)
     }
   }
 
@@ -94,6 +109,9 @@ export function AdminOrganizersPage() {
           message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${organizersError}`}
           tone="error"
         />
+      ) : null}
+      {actionError ? (
+        <ApiNotice message={actionError} tone="error" />
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -154,6 +172,7 @@ export function AdminOrganizersPage() {
       <section className="grid gap-4 md:grid-cols-2">
         {filteredOrganizers.map((org) => {
           const orgEvents = getOrganizerEvents(org.id)
+          const isPending = pendingOrganizerIds.includes(org.id)
 
           return (
             <article
@@ -206,10 +225,21 @@ export function AdminOrganizersPage() {
               </div>
               <button
                 type="button"
-                onClick={() => void updateVerification(org.id, !org.verified)}
-                className="mt-5 inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted"
+                disabled={isPending}
+                onClick={() =>
+                  setPendingVerification({
+                    organizerId: org.id,
+                    organizerName: org.name,
+                    verified: !org.verified,
+                  })
+                }
+                className="mt-5 inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {org.verified ? 'Tandai unverified' : 'Verifikasi organizer'}
+                {isPending
+                  ? 'Menyimpan...'
+                  : org.verified
+                    ? 'Tandai unverified'
+                    : 'Verifikasi organizer'}
               </button>
             </article>
           )
@@ -223,6 +253,29 @@ export function AdminOrganizersPage() {
             Coba ubah filter atau kata kunci pencarian.
           </p>
         </section>
+      ) : null}
+
+      {pendingVerification ? (
+        <ConfirmDialog
+          tone={pendingVerification.verified ? 'default' : 'danger'}
+          title={
+            pendingVerification.verified
+              ? 'Verifikasi organizer?'
+              : 'Cabut verifikasi organizer?'
+          }
+          description={`${pendingVerification.organizerName} akan ${
+            pendingVerification.verified ? 'ditandai terverifikasi' : 'ditandai belum terverifikasi'
+          }. Perubahan ini memengaruhi kepercayaan dan visibilitas organizer di platform.`}
+          confirmLabel={pendingVerification.verified ? 'Verifikasi' : 'Cabut verifikasi'}
+          isPending={pendingOrganizerIds.includes(pendingVerification.organizerId)}
+          onCancel={() => setPendingVerification(null)}
+          onConfirm={() =>
+            void updateVerification(
+              pendingVerification.organizerId,
+              pendingVerification.verified,
+            )
+          }
+        />
       ) : null}
     </div>
   )
@@ -270,4 +323,12 @@ function ApiNotice({
       {message}
     </div>
   )
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Status verifikasi organizer belum bisa diperbarui.'
 }

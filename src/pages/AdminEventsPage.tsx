@@ -7,6 +7,7 @@ import {
 import { useCallback, useMemo, useState } from 'react'
 
 import {
+  ConfirmDialog,
   OrganizerEventRow,
   PageHeader,
   StatsCard,
@@ -18,6 +19,11 @@ import type { EventCategory, EventStatus } from '@/types/migunani'
 
 type CategoryFilter = EventCategory | 'Semua'
 type StatusFilterType = EventStatus | 'Semua'
+type PendingEventStatusChange = {
+  eventId: string
+  eventTitle: string
+  status: EventStatus
+}
 
 export function AdminEventsPage() {
   const loadEvents = useCallback(async () => {
@@ -33,6 +39,10 @@ export function AdminEventsPage() {
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('Semua')
   const [statusFilter, setStatusFilter] = useState<StatusFilterType>('Semua')
+  const [pendingEventIds, setPendingEventIds] = useState<string[]>([])
+  const [pendingStatusChange, setPendingStatusChange] =
+    useState<PendingEventStatusChange | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const visibleEvents = getVisibleEvents(adminEvents, eventOverrides)
 
   const filteredEvents = useMemo(() => {
@@ -67,14 +77,22 @@ export function AdminEventsPage() {
       return
     }
 
+    setActionError(null)
+    setPendingEventIds((current) =>
+      current.includes(eventId) ? current : [...current, eventId],
+    )
     setEventOverrides((current) => upsertEvent(current, { ...baseEvent, status }))
 
     try {
       const updatedEvent = mapEvent(await adminApi.updateEventStatus(eventId, status))
       setEventOverrides((current) => upsertEvent(current, updatedEvent))
       void reload()
-    } catch {
+    } catch (error) {
       setEventOverrides(previousOverrides)
+      setActionError(getErrorMessage(error))
+    } finally {
+      setPendingEventIds((current) => current.filter((id) => id !== eventId))
+      setPendingStatusChange(null)
     }
   }
 
@@ -94,6 +112,9 @@ export function AdminEventsPage() {
           message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${eventsError}`}
           tone="error"
         />
+      ) : null}
+      {actionError ? (
+        <ApiNotice message={actionError} tone="error" />
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -167,22 +188,31 @@ export function AdminEventsPage() {
       </p>
 
       <section className="grid gap-4">
-        {filteredEvents.map((event) => (
+        {filteredEvents.map((event) => {
+          const isPending = pendingEventIds.includes(event.id)
+
+          return (
           <div key={event.id} className="space-y-2">
             <OrganizerEventRow event={event} detailPathPrefix={null} />
             <select
               value={event.status}
+              disabled={isPending}
               onChange={(selectEvent) =>
-                void updateStatus(event.id, selectEvent.target.value as EventStatus)
+                setPendingStatusChange({
+                  eventId: event.id,
+                  eventTitle: event.title,
+                  status: selectEvent.target.value as EventStatus,
+                })
               }
-              className="h-10 w-fit rounded-md border bg-background px-3 text-xs font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              className="h-10 w-fit rounded-md border bg-background px-3 text-xs font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="Open">Open</option>
               <option value="Nearly Full">Nearly Full</option>
               <option value="Closed">Closed</option>
             </select>
           </div>
-        ))}
+          )
+        })}
       </section>
 
       {filteredEvents.length === 0 ? (
@@ -192,6 +222,20 @@ export function AdminEventsPage() {
             Coba ubah filter kategori, status, atau kata kunci pencarian.
           </p>
         </section>
+      ) : null}
+
+      {pendingStatusChange ? (
+        <ConfirmDialog
+          tone={pendingStatusChange.status === 'Closed' ? 'danger' : 'default'}
+          title="Ubah status event?"
+          description={`${pendingStatusChange.eventTitle} akan diubah menjadi ${pendingStatusChange.status}. Perubahan ini memengaruhi visibilitas dan pendaftaran relawan.`}
+          confirmLabel="Ubah status"
+          isPending={pendingEventIds.includes(pendingStatusChange.eventId)}
+          onCancel={() => setPendingStatusChange(null)}
+          onConfirm={() =>
+            void updateStatus(pendingStatusChange.eventId, pendingStatusChange.status)
+          }
+        />
       ) : null}
     </div>
   )
@@ -235,4 +279,12 @@ function ApiNotice({
       {message}
     </div>
   )
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Status event belum bisa diperbarui.'
 }

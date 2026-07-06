@@ -11,10 +11,11 @@ import {
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { CategoryChip, PageHeader, StatsCard, StatusBadge } from '@/components'
+import { CategoryChip, ConfirmDialog, PageHeader, StatsCard, StatusBadge } from '@/components'
 import {
   getEventById,
   getOrganizerById,
+  platformUsers,
   volunteerApplications as initialApplications,
   volunteerProfile,
 } from '@/data'
@@ -27,6 +28,12 @@ import type { ApplicationStatus, VolunteerApplication, VolunteerEvent } from '@/
 
 const fallbackOrganizerId = 'org-aksara-muda'
 
+type ApplicantIdentity = {
+  name: string
+  profileLine: string
+  city?: string
+}
+
 export function OrganizerApplicantsPage() {
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
@@ -38,6 +45,7 @@ export function OrganizerApplicantsPage() {
       events: initialApplications
         .map((application) => getEventById(application.eventId))
         .filter((event): event is VolunteerEvent => Boolean(event)),
+      applicantIdentities: getFallbackApplicantIdentities(initialApplications),
     }),
     [],
   )
@@ -52,6 +60,7 @@ export function OrganizerApplicantsPage() {
     return {
       applications: mappedApplications,
       events: dedupeEvents([...fallbackResource.events, ...apiEvents]),
+      applicantIdentities: getApplicantIdentities(apiApplications, mappedApplications),
     }
   }, [fallbackResource.events, organizerId])
   const {
@@ -69,6 +78,9 @@ export function OrganizerApplicantsPage() {
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null)
   const [checkedInIds, setCheckedInIds] = useState<string[]>([])
   const [issuedCertificateIds, setIssuedCertificateIds] = useState<string[]>([])
+  const [pendingApplicationIds, setPendingApplicationIds] = useState<string[]>([])
+  const [rejectApplicationId, setRejectApplicationId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const applications = applicationsOverride ?? resource.applications
 
   // Handle Approve Action
@@ -78,10 +90,14 @@ export function OrganizerApplicantsPage() {
 
   // Handle Reject Action
   const handleReject = (applicationId: string) => {
-    void updateStatus(applicationId, 'Rejected')
+    setRejectApplicationId(applicationId)
   }
 
   const handleCheckIn = async (applicationId: string) => {
+    setActionError(null)
+    setPendingApplicationIds((current) =>
+      current.includes(applicationId) ? current : [...current, applicationId],
+    )
     setCheckedInIds((current) =>
       current.includes(applicationId) ? current : [...current, applicationId],
     )
@@ -92,22 +108,33 @@ export function OrganizerApplicantsPage() {
       )
       replaceApplication(updatedApplication)
       void reload()
-    } catch {
+    } catch (error) {
       setCheckedInIds((current) => current.filter((id) => id !== applicationId))
+      setActionError(getErrorMessage(error))
+    } finally {
+      setPendingApplicationIds((current) => current.filter((id) => id !== applicationId))
     }
   }
 
   async function handleIssueCertificate(applicationId: string) {
+    setActionError(null)
+    setPendingApplicationIds((current) =>
+      current.includes(applicationId) ? current : [...current, applicationId],
+    )
     setIssuedCertificateIds((current) =>
       current.includes(applicationId) ? current : [...current, applicationId],
     )
 
     try {
       await organizerApi.issueCertificate(organizerId, applicationId)
-    } catch {
+      void reload()
+    } catch (error) {
       setIssuedCertificateIds((current) =>
         current.filter((id) => id !== applicationId),
       )
+      setActionError(getErrorMessage(error))
+    } finally {
+      setPendingApplicationIds((current) => current.filter((id) => id !== applicationId))
     }
   }
 
@@ -116,6 +143,10 @@ export function OrganizerApplicantsPage() {
     status: ApplicationStatus,
   ) {
     const previousApplications = applications
+    setActionError(null)
+    setPendingApplicationIds((current) =>
+      current.includes(applicationId) ? current : [...current, applicationId],
+    )
     setApplicationsOverride(
       previousApplications.map((app) =>
         app.id === applicationId ? { ...app, status } : app,
@@ -128,8 +159,12 @@ export function OrganizerApplicantsPage() {
       )
       replaceApplication(updatedApplication)
       void reload()
-    } catch {
+    } catch (error) {
       setApplicationsOverride(previousApplications)
+      setActionError(getErrorMessage(error))
+    } finally {
+      setPendingApplicationIds((current) => current.filter((id) => id !== applicationId))
+      setRejectApplicationId(null)
     }
   }
 
@@ -149,21 +184,21 @@ export function OrganizerApplicantsPage() {
         application,
         event: resource.events.find((event) => event.id === application.eventId) ??
           getEventById(application.eventId),
+        applicantIdentity: resource.applicantIdentities[application.id],
       }))
       .filter(({ event }) => !focusedEventId || event?.id === focusedEventId)
       .filter(({ application }) => {
         if (statusFilter === 'Semua status') return true
         return application.status.toLowerCase() === statusFilter.toLowerCase()
       })
-      .filter(({ application, event }) => {
+      .filter(({ application, applicantIdentity, event }) => {
         if (!normalizedQuery) {
           return true
         }
 
         return [
-          volunteerProfile.name,
-          volunteerProfile.university,
-          volunteerProfile.major,
+          applicantIdentity?.name ?? '',
+          applicantIdentity?.profileLine ?? '',
           application.role,
           application.status,
           event?.title ?? '',
@@ -173,7 +208,14 @@ export function OrganizerApplicantsPage() {
           .toLowerCase()
           .includes(normalizedQuery)
       })
-  }, [applications, focusedEventId, query, resource.events, statusFilter])
+  }, [
+    applications,
+    focusedEventId,
+    query,
+    resource.applicantIdentities,
+    resource.events,
+    statusFilter,
+  ])
 
   const focusedEvent = focusedEventId
     ? resource.events.find((event) => event.id === focusedEventId) ??
@@ -194,6 +236,9 @@ export function OrganizerApplicantsPage() {
   }).length
   const selectedApplication = selectedApplicationId
     ? applications.find((app) => app.id === selectedApplicationId)
+    : undefined
+  const rejectApplication = rejectApplicationId
+    ? applications.find((app) => app.id === rejectApplicationId)
     : undefined
   const selectedEvent = selectedApplication
     ? resource.events.find((event) => event.id === selectedApplication.eventId) ??
@@ -228,6 +273,9 @@ export function OrganizerApplicantsPage() {
           message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${applicantsError}`}
           tone="error"
         />
+      ) : null}
+      {actionError ? (
+        <ApiNotice message={actionError} tone="error" />
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -304,17 +352,21 @@ export function OrganizerApplicantsPage() {
               Tidak ada applicant yang cocok dengan filter.
             </div>
           ) : (
-            rows.map(({ application, event }) => (
+            rows.map(({ application, event }) => {
+              const isPending = pendingApplicationIds.includes(application.id)
+
+              return (
               <article
                 key={application.id}
                 className="grid grid-cols-[1fr_auto] gap-4 px-4 py-4 lg:grid-cols-[1.2fr_1fr_150px_130px_120px_150px] lg:items-center"
               >
                 <div className="min-w-0">
                   <p className="font-heading text-base font-extrabold">
-                    {volunteerProfile.name}
+                    {resource.applicantIdentities[application.id]?.name ?? volunteerProfile.name}
                   </p>
                   <p className="mt-1 truncate text-sm text-muted-foreground">
-                    {volunteerProfile.major} · {volunteerProfile.university}
+                    {resource.applicantIdentities[application.id]?.profileLine ??
+                      `${volunteerProfile.major} · ${volunteerProfile.university}`}
                   </p>
                 </div>
                 <div className="hidden min-w-0 lg:block">
@@ -339,8 +391,10 @@ export function OrganizerApplicantsPage() {
                 </div>
                 <div className="flex items-center justify-end gap-2 lg:justify-start">
                   <button
+                    type="button"
+                    disabled={isPending}
                     onClick={() => setSelectedApplicationId(application.id)}
-                    className="inline-flex size-8 items-center justify-center rounded bg-accent text-accent-foreground transition hover:bg-primary hover:text-primary-foreground"
+                    className="inline-flex size-8 items-center justify-center rounded bg-accent text-accent-foreground transition hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
                     title="Lihat Detail"
                   >
                     <Eye size={16} />
@@ -348,15 +402,19 @@ export function OrganizerApplicantsPage() {
                   {application.status === 'Submitted' ? (
                     <>
                       <button
+                        type="button"
+                        disabled={isPending}
                         onClick={() => handleApprove(application.id)}
-                        className="inline-flex size-8 items-center justify-center rounded bg-primary/10 text-primary transition hover:bg-primary hover:text-primary-foreground"
+                        className="inline-flex size-8 items-center justify-center rounded bg-primary/10 text-primary transition hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
                         title="Terima Relawan"
                       >
                         <Check size={16} />
                       </button>
                       <button
+                        type="button"
+                        disabled={isPending}
                         onClick={() => handleReject(application.id)}
-                        className="inline-flex size-8 items-center justify-center rounded bg-destructive/10 text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+                        className="inline-flex size-8 items-center justify-center rounded bg-destructive/10 text-destructive transition hover:bg-destructive hover:text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-60"
                         title="Tolak Relawan"
                       >
                         <X size={16} />
@@ -364,20 +422,24 @@ export function OrganizerApplicantsPage() {
                     </>
                   ) : application.status === 'Accepted' && !checkedInIds.includes(application.id) ? (
                     <button
+                      type="button"
+                      disabled={isPending}
                       onClick={() => handleCheckIn(application.id)}
-                      className="inline-flex h-8 items-center justify-center rounded bg-primary/10 px-3 text-xs font-bold text-primary transition hover:bg-primary hover:text-primary-foreground"
+                      className="inline-flex h-8 items-center justify-center rounded bg-primary/10 px-3 text-xs font-bold text-primary transition hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
                       title="Check-in Relawan"
                     >
-                      Check-in
+                      {isPending ? 'Menyimpan...' : 'Check-in'}
                     </button>
                   ) : application.status === 'Completed' &&
                     !issuedCertificateIds.includes(application.id) ? (
                     <button
+                      type="button"
+                      disabled={isPending}
                       onClick={() => void handleIssueCertificate(application.id)}
-                      className="inline-flex h-8 items-center justify-center rounded bg-secondary/30 px-3 text-xs font-bold text-secondary-foreground transition hover:bg-secondary"
+                      className="inline-flex h-8 items-center justify-center rounded bg-secondary/30 px-3 text-xs font-bold text-secondary-foreground transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
                       title="Terbitkan sertifikat"
                     >
-                      Issue cert
+                      {isPending ? 'Menerbitkan...' : 'Issue cert'}
                     </button>
                   ) : checkedInIds.includes(application.id) ||
                     issuedCertificateIds.includes(application.id) ? (
@@ -393,7 +455,8 @@ export function OrganizerApplicantsPage() {
                   )}
                 </div>
               </article>
-            ))
+              )
+            })
           )}
         </div>
       </section>
@@ -403,7 +466,9 @@ export function OrganizerApplicantsPage() {
           application={selectedApplication}
           event={selectedEvent}
           organizerId={organizerId}
+          fallbackApplicantIdentity={resource.applicantIdentities[selectedApplication.id]}
           checkedIn={checkedInIds.includes(selectedApplication.id)}
+          isPending={pendingApplicationIds.includes(selectedApplication.id)}
           onClose={() => setSelectedApplicationId(null)}
           onApprove={() => handleApprove(selectedApplication.id)}
           onReject={() => handleReject(selectedApplication.id)}
@@ -412,6 +477,20 @@ export function OrganizerApplicantsPage() {
           certificateIssued={issuedCertificateIds.includes(selectedApplication.id)}
         />
       )}
+
+      {rejectApplication ? (
+        <ConfirmDialog
+          tone="danger"
+          title="Tolak applicant?"
+          description={`Aplikasi ${
+            resource.applicantIdentities[rejectApplication.id]?.name ?? volunteerProfile.name
+          } untuk ${getEventTitle(resource.events, rejectApplication.eventId)} akan ditolak.`}
+          confirmLabel="Tolak applicant"
+          isPending={pendingApplicationIds.includes(rejectApplication.id)}
+          onCancel={() => setRejectApplicationId(null)}
+          onConfirm={() => void updateStatus(rejectApplication.id, 'Rejected')}
+        />
+      ) : null}
     </div>
   )
 }
@@ -420,7 +499,9 @@ function ApplicantDetailModal({
   application,
   event,
   organizerId,
+  fallbackApplicantIdentity,
   checkedIn,
+  isPending,
   onClose,
   onApprove,
   onReject,
@@ -431,7 +512,9 @@ function ApplicantDetailModal({
   application: VolunteerApplication
   event?: VolunteerEvent
   organizerId: string
+  fallbackApplicantIdentity?: ApplicantIdentity
   checkedIn: boolean
+  isPending: boolean
   onClose: () => void
   onApprove: () => void
   onReject: () => void
@@ -447,20 +530,25 @@ function ApplicantDetailModal({
     loadApplicationDetail,
     null,
   )
-  const volunteerName = detail?.volunteer?.name ?? volunteerProfile.name
-  const volunteerProfileLine = [
-    detail?.volunteer?.city ?? volunteerProfile.city,
-    volunteerProfile.major,
-    volunteerProfile.university,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  const volunteerName =
+    detail?.volunteer?.name ?? fallbackApplicantIdentity?.name ?? volunteerProfile.name
+  const volunteerProfileLine =
+    [
+      detail?.volunteer?.city,
+      detail?.volunteer?.email,
+    ]
+      .filter(Boolean)
+      .join(' · ') ||
+    fallbackApplicantIdentity?.profileLine ||
+    `${volunteerProfile.major} · ${volunteerProfile.university}`
   const motivation = detail?.motivation ?? application.motivation
   const availability = detail?.availability ?? application.availability
+  const volunteerCity =
+    detail?.volunteer?.city ?? fallbackApplicantIdentity?.city ?? volunteerProfile.city
   const matchNotes = [
     application.role,
     event?.category,
-    (detail?.volunteer?.city ?? volunteerProfile.city) === event?.city
+    volunteerCity === event?.city
       ? `Dekat ${event?.city}`
       : null,
   ].filter(Boolean)
@@ -568,38 +656,42 @@ function ApplicantDetailModal({
             <>
               <button
                 type="button"
+                disabled={isPending}
                 onClick={onReject}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive/20 bg-card px-4 text-sm font-bold text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive/20 bg-card px-4 text-sm font-bold text-destructive transition hover:bg-destructive hover:text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <X size={16} />
                 Tolak
               </button>
               <button
                 type="button"
+                disabled={isPending}
                 onClick={onApprove}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Check size={16} />
-                Terima
+                {isPending ? 'Menyimpan...' : 'Terima'}
               </button>
             </>
           ) : application.status === 'Accepted' && !checkedIn ? (
             <button
               type="button"
+              disabled={isPending}
               onClick={onCheckIn}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:cursor-not-allowed disabled:opacity-60"
             >
               <ClipboardCheck size={16} />
-              Check-in relawan
+              {isPending ? 'Menyimpan...' : 'Check-in relawan'}
             </button>
           ) : application.status === 'Completed' && !certificateIssued ? (
             <button
               type="button"
+              disabled={isPending}
               onClick={onIssueCertificate}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-secondary px-4 text-sm font-bold text-secondary-foreground transition hover:bg-secondary/80"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-secondary px-4 text-sm font-bold text-secondary-foreground transition hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <CheckCircle2 size={16} />
-              Terbitkan sertifikat
+              {isPending ? 'Menerbitkan...' : 'Terbitkan sertifikat'}
             </button>
           ) : (
             <button
@@ -625,12 +717,84 @@ function DetailBlock({ label, value }: { label: string; value: string }) {
   )
 }
 
+function getEventTitle(sourceEvents: VolunteerEvent[], eventId: string) {
+  return sourceEvents.find((event) => event.id === eventId)?.title ??
+    getEventById(eventId)?.title ??
+    'Event Migunani'
+}
+
 function dedupeEvents(sourceEvents: VolunteerEvent[]) {
   return Array.from(
     sourceEvents
       .reduce((eventMap, event) => eventMap.set(event.id, event), new Map<string, VolunteerEvent>())
       .values(),
   )
+}
+
+function getApplicantIdentities(
+  apiApplications: ApiApplication[],
+  mappedApplications: VolunteerApplication[],
+) {
+  const fallbackIdentities = getFallbackApplicantIdentities(mappedApplications)
+
+  return apiApplications.reduce<Record<string, ApplicantIdentity>>(
+    (identityMap, application) => {
+      identityMap[application.id] = getApplicantIdentity(application, fallbackIdentities[application.id])
+      return identityMap
+    },
+    {},
+  )
+}
+
+function getApplicantIdentity(
+  application: ApiApplication,
+  fallbackIdentity?: ApplicantIdentity,
+): ApplicantIdentity {
+  const volunteer = application.volunteer
+  const profileLine = [
+    volunteer?.city,
+    volunteer?.email,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  return {
+    name: volunteer?.name ?? fallbackIdentity?.name ?? volunteerProfile.name,
+    profileLine:
+      profileLine ||
+      fallbackIdentity?.profileLine ||
+      `${volunteerProfile.major} · ${volunteerProfile.university}`,
+    city: volunteer?.city ?? fallbackIdentity?.city ?? volunteerProfile.city,
+  }
+}
+
+function getFallbackApplicantIdentities(applications: VolunteerApplication[]) {
+  const volunteerUsers = platformUsers.filter((user) => user.role === 'volunteer')
+
+  return applications.reduce<Record<string, ApplicantIdentity>>((identityMap, application, index) => {
+    const user = volunteerUsers[index % volunteerUsers.length]
+
+    identityMap[application.id] = {
+      name: user?.name ?? volunteerProfile.name,
+      profileLine: [
+        user?.city,
+        user?.email,
+      ]
+        .filter(Boolean)
+        .join(' · ') || `${volunteerProfile.major} · ${volunteerProfile.university}`,
+      city: user?.city ?? volunteerProfile.city,
+    }
+
+    return identityMap
+  }, {})
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Aksi applicant belum bisa diproses.'
 }
 
 function ApiNotice({

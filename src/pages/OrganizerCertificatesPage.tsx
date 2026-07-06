@@ -10,8 +10,8 @@ import {
 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
-import { PageHeader, StatsCard } from '@/components'
-import { certificates, getEventById, getOrganizerById } from '@/data'
+import { ConfirmDialog, PageHeader, StatsCard } from '@/components'
+import { certificates, getEventById, getOrganizerById, platformUsers } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -24,19 +24,25 @@ const fallbackOrganizerId = 'org-aksara-muda'
 export function OrganizerCertificatesPage() {
   const { user } = useAuth()
   const organizerId = user?.organizerId ?? fallbackOrganizerId
-  const fallbackCertificates = useMemo<ApiCertificate[]>(
-    () =>
-      certificates.map((certificate) => ({
+  const fallbackCertificates = useMemo<ApiCertificate[]>(() => {
+    const volunteerUsers = platformUsers.filter(
+      (platformUser) => platformUser.role === 'volunteer',
+    )
+
+    return certificates.map((certificate, index) => {
+      const volunteerUser = volunteerUsers[index % volunteerUsers.length]
+
+      return {
         ...certificate,
         status: 'Issued',
         isValid: true,
-        volunteerName: 'Nadira Putri',
+        volunteerName: volunteerUser?.name ?? 'Relawan Migunani',
         eventTitle: getEventById(certificate.eventId)?.title ?? 'Event Migunani',
         organizerName:
           getOrganizerById(fallbackOrganizerId)?.name ?? 'Organizer Migunani',
-      })),
-    [],
-  )
+      }
+    })
+  }, [])
   const loadCertificates = useCallback(
     () => organizerApi.getOrganizerCertificates(organizerId),
     [organizerId],
@@ -50,6 +56,10 @@ export function OrganizerCertificatesPage() {
   const [overrides, setOverrides] = useState<Record<string, ApiCertificate>>({})
   const [query, setQuery] = useState('')
   const [selectedCertificateId, setSelectedCertificateId] = useState<string | null>(null)
+  const [pendingCertificateIds, setPendingCertificateIds] = useState<string[]>([])
+  const [pendingRevokeCertificate, setPendingRevokeCertificate] =
+    useState<ApiCertificate | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const visibleCertificates = apiCertificates.map(
     (certificate) => overrides[certificate.id] ?? certificate,
   )
@@ -80,6 +90,10 @@ export function OrganizerCertificatesPage() {
 
   async function revokeCertificate(certificate: ApiCertificate) {
     const previous = overrides[certificate.id] ?? certificate
+    setActionError(null)
+    setPendingCertificateIds((current) =>
+      current.includes(certificate.id) ? current : [...current, certificate.id],
+    )
     setOverrides((current) => ({
       ...current,
       [certificate.id]: {
@@ -100,12 +114,21 @@ export function OrganizerCertificatesPage() {
         [certificate.id]: revokedCertificate,
       }))
       void reload()
-    } catch {
+    } catch (error) {
       setOverrides((current) => ({ ...current, [certificate.id]: previous }))
+      setActionError(getErrorMessage(error))
+    } finally {
+      setPendingCertificateIds((current) => current.filter((id) => id !== certificate.id))
+      setPendingRevokeCertificate(null)
     }
   }
 
   async function createReplacement(certificate: ApiCertificate) {
+    setActionError(null)
+    setPendingCertificateIds((current) =>
+      current.includes(certificate.id) ? current : [...current, certificate.id],
+    )
+
     try {
       const replacementCertificate =
         await organizerApi.createReplacementCertificate(organizerId, certificate.id, {
@@ -120,8 +143,10 @@ export function OrganizerCertificatesPage() {
         [replacementCertificate.id]: replacementCertificate,
       }))
       void reload()
-    } catch {
-      setOverrides((current) => ({ ...current }))
+    } catch (error) {
+      setActionError(getErrorMessage(error))
+    } finally {
+      setPendingCertificateIds((current) => current.filter((id) => id !== certificate.id))
     }
   }
 
@@ -141,6 +166,9 @@ export function OrganizerCertificatesPage() {
           message={`Sebagian data belum bisa dimuat. Menampilkan informasi terakhir yang tersedia. ${error}`}
           tone="error"
         />
+      ) : null}
+      {actionError ? (
+        <ApiNotice message={actionError} tone="error" />
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -196,11 +224,14 @@ export function OrganizerCertificatesPage() {
               Tidak ada sertifikat yang cocok dengan pencarian.
             </div>
           ) : (
-            filteredCertificates.map((certificate) => (
-              <article
-                key={certificate.id}
-                className="grid grid-cols-[1fr_auto] gap-4 px-4 py-4 lg:grid-cols-[1fr_1fr_170px_120px_140px] lg:items-center"
-              >
+            filteredCertificates.map((certificate) => {
+              const isPending = pendingCertificateIds.includes(certificate.id)
+
+              return (
+                <article
+                  key={certificate.id}
+                  className="grid grid-cols-[1fr_auto] gap-4 px-4 py-4 lg:grid-cols-[1fr_1fr_170px_120px_140px] lg:items-center"
+                >
                 <div className="min-w-0">
                   <p className="font-mono text-sm font-bold text-foreground">
                     {certificate.credentialId}
@@ -231,25 +262,28 @@ export function OrganizerCertificatesPage() {
                     <>
                       <button
                         type="button"
+                        disabled={isPending}
                         onClick={() => void createReplacement(certificate)}
-                        className="inline-flex size-8 items-center justify-center rounded bg-secondary/30 text-secondary-foreground transition hover:bg-secondary"
+                        className="inline-flex size-8 items-center justify-center rounded bg-secondary/30 text-secondary-foreground transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
                         aria-label="Buat sertifikat pengganti"
                       >
                         <RefreshCw size={16} />
                       </button>
                       <button
                         type="button"
-                        onClick={() => void revokeCertificate(certificate)}
-                        className="inline-flex size-8 items-center justify-center rounded bg-destructive/10 text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+                        disabled={isPending}
+                        onClick={() => setPendingRevokeCertificate(certificate)}
+                        className="inline-flex size-8 items-center justify-center rounded bg-destructive/10 text-destructive transition hover:bg-destructive hover:text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-60"
                         aria-label="Revoke sertifikat"
                       >
                         <Ban size={16} />
                       </button>
                     </>
                   ) : null}
-                </div>
-              </article>
-            ))
+                  </div>
+                </article>
+              )
+            })
           )}
         </div>
       </section>
@@ -258,9 +292,22 @@ export function OrganizerCertificatesPage() {
         <CertificateDetailModal
           organizerId={organizerId}
           certificate={selectedCertificate}
+          isPending={pendingCertificateIds.includes(selectedCertificate.id)}
           onClose={() => setSelectedCertificateId(null)}
-          onRevoke={() => void revokeCertificate(selectedCertificate)}
+          onRevoke={() => setPendingRevokeCertificate(selectedCertificate)}
           onReplace={() => void createReplacement(selectedCertificate)}
+        />
+      ) : null}
+
+      {pendingRevokeCertificate ? (
+        <ConfirmDialog
+          tone="danger"
+          title="Revoke sertifikat?"
+          description={`Credential ${pendingRevokeCertificate.credentialId} akan dibatalkan dan tidak lagi valid untuk verifikasi.`}
+          confirmLabel="Revoke sertifikat"
+          isPending={pendingCertificateIds.includes(pendingRevokeCertificate.id)}
+          onCancel={() => setPendingRevokeCertificate(null)}
+          onConfirm={() => void revokeCertificate(pendingRevokeCertificate)}
         />
       ) : null}
     </div>
@@ -270,12 +317,14 @@ export function OrganizerCertificatesPage() {
 function CertificateDetailModal({
   organizerId,
   certificate,
+  isPending,
   onClose,
   onRevoke,
   onReplace,
 }: {
   organizerId: string
   certificate: ApiCertificate
+  isPending: boolean
   onClose: () => void
   onRevoke: () => void
   onReplace: () => void
@@ -341,16 +390,18 @@ function CertificateDetailModal({
             <>
               <button
                 type="button"
+                disabled={isPending}
                 onClick={onReplace}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-secondary px-4 text-sm font-bold text-secondary-foreground transition hover:bg-secondary/80"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-secondary px-4 text-sm font-bold text-secondary-foreground transition hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <RefreshCw size={16} />
                 Replacement
               </button>
               <button
                 type="button"
+                disabled={isPending}
                 onClick={onRevoke}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-destructive px-4 text-sm font-bold text-destructive-foreground transition hover:bg-red-700"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-destructive px-4 text-sm font-bold text-destructive-foreground transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Ban size={16} />
                 Revoke
@@ -405,4 +456,12 @@ function ApiNotice({
       {message}
     </div>
   )
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Aksi sertifikat belum bisa diproses.'
 }

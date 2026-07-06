@@ -27,6 +27,7 @@ import {
   getOrganizerEvents,
   organizerMetrics,
   organizers,
+  platformUsers,
   volunteerApplications,
   volunteerProfile,
 } from '@/data'
@@ -34,6 +35,7 @@ import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate, getFillPercentage } from '@/lib/format'
 import { mapApplication, mapEvent, mapOrganizer, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
+import type { ApiApplication } from '@/services/api'
 import type { EventCategory } from '@/types/migunani'
 
 const activeOrganizerId = 'org-aksara-muda'
@@ -55,6 +57,7 @@ export function OrganizerDashboardPage() {
       organizer: fallbackOrganizer,
       events: fallbackEvents.length > 0 ? fallbackEvents : events.slice(0, 4),
       applications: volunteerApplications,
+      applicantIdentities: getFallbackApplicantIdentities(volunteerApplications),
       metrics: organizerMetrics,
     }),
     [fallbackEvents, fallbackOrganizer],
@@ -67,6 +70,7 @@ export function OrganizerDashboardPage() {
       organizer: mapOrganizer(dashboard.organizer),
       events: dashboard.events.map(mapEvent),
       applications: dashboard.applications.map(mapApplication),
+      applicantIdentities: getApplicantIdentities(dashboard.applications),
       metrics: dashboard.metrics ?? organizerMetrics,
     }
   }, [organizerId])
@@ -82,6 +86,7 @@ export function OrganizerDashboardPage() {
       application,
       event: visibleEvents.find((event) => event.id === application.eventId) ??
         getEventById(application.eventId),
+      applicantIdentity: resource.applicantIdentities[application.id],
     }))
     .filter((row) => row.event)
 
@@ -189,17 +194,19 @@ export function OrganizerDashboardPage() {
                 <span>Status</span>
               </div>
               <div className="divide-y">
-                {applicantRows.map(({ application, event }) => (
+                {applicantRows.map(({ application, applicantIdentity, event }) => (
                   <article
                     key={application.id}
                     className="grid grid-cols-[1fr_auto] gap-4 px-4 py-4 md:grid-cols-[1fr_160px_140px_120px] md:items-center"
                   >
                     <div className="min-w-0">
                       <p className="font-heading text-base font-extrabold">
-                        {volunteerProfile.name}
+                        {applicantIdentity?.name ?? volunteerProfile.name}
                       </p>
                       <p className="mt-1 truncate text-sm text-muted-foreground">
-                        {event?.title ?? 'Event Migunani'}
+                        {[applicantIdentity?.profileLine, event?.title ?? 'Event Migunani']
+                          .filter(Boolean)
+                          .join(' · ')}
                       </p>
                     </div>
                     <span className="hidden text-sm font-semibold text-muted-foreground md:block">
@@ -306,6 +313,50 @@ function ApiNotice({
     >
       {message}
     </div>
+  )
+}
+
+function getApplicantIdentities(applications: ApiApplication[]) {
+  const fallbackIdentities = getFallbackApplicantIdentities(applications)
+
+  return applications.reduce<Record<string, { name: string; profileLine: string }>>(
+    (identityMap, application) => {
+      const volunteer = application.volunteer
+      const profileLine = [volunteer?.city, volunteer?.email]
+        .filter(Boolean)
+        .join(' · ')
+
+      identityMap[application.id] = {
+        name: volunteer?.name ?? fallbackIdentities[application.id]?.name ?? volunteerProfile.name,
+        profileLine:
+          profileLine ||
+          fallbackIdentities[application.id]?.profileLine ||
+          `${volunteerProfile.major} · ${volunteerProfile.university}`,
+      }
+
+      return identityMap
+    },
+    {},
+  )
+}
+
+function getFallbackApplicantIdentities(applications: Array<{ id: string }>) {
+  const volunteerUsers = platformUsers.filter((user) => user.role === 'volunteer')
+
+  return applications.reduce<Record<string, { name: string; profileLine: string }>>(
+    (identityMap, application, index) => {
+      const user = volunteerUsers[index % volunteerUsers.length]
+
+      identityMap[application.id] = {
+        name: user?.name ?? volunteerProfile.name,
+        profileLine:
+          [user?.city, user?.email].filter(Boolean).join(' · ') ||
+          `${volunteerProfile.major} · ${volunteerProfile.university}`,
+      }
+
+      return identityMap
+    },
+    {},
   )
 }
 

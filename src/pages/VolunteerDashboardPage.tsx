@@ -13,7 +13,6 @@ import {
   X,
   FileCheck,
   Sparkles,
-  AlertCircle
 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useCallback, useMemo, useState } from 'react'
@@ -21,6 +20,7 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   CategoryChip,
   CertificateCard,
+  ConfirmDialog,
   EventCard,
   PageHeader,
   StatsCard,
@@ -125,6 +125,7 @@ export function VolunteerDashboardPage() {
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadSuccess, setDownloadSuccess] = useState(false)
   const [appToCancel, setAppToCancel] = useState<string | null>(null)
+  const [cancellingApplicationIds, setCancellingApplicationIds] = useState<string[]>([])
 
   const visibleApplications = applications ?? dashboard.applications
   const visibleSavedEvents = useMemo(() => {
@@ -164,6 +165,9 @@ export function VolunteerDashboardPage() {
   // Handle cancel application
   const handleCancelApplication = (appId: string) => {
     const previousApplications = visibleApplications
+    setCancellingApplicationIds((current) =>
+      current.includes(appId) ? current : [...current, appId],
+    )
     setApplications(
       previousApplications.map((app) =>
         app.id === appId ? { ...app, status: 'Cancelled' } : app,
@@ -184,6 +188,9 @@ export function VolunteerDashboardPage() {
       })
       .catch(() => {
         setApplications(previousApplications)
+      })
+      .finally(() => {
+        setCancellingApplicationIds((current) => current.filter((id) => id !== appId))
       })
   }
 
@@ -342,6 +349,7 @@ export function VolunteerDashboardPage() {
         <ApplicationsTab
           applications={visibleApplications}
           eventLookup={dashboard.eventLookup}
+          cancellingApplicationIds={cancellingApplicationIds}
           onCancelRequest={(id) => setAppToCancel(id)}
         />
       ) : null}
@@ -384,7 +392,7 @@ export function VolunteerDashboardPage() {
                   Sertifikat Penghargaan
                 </p>
                 <h3 className="mt-4 font-serif text-3xl font-bold italic text-foreground">
-                  Nadira Putri
+                  {dashboard.profile.name}
                 </h3>
                 <p className="mt-3 text-sm max-w-md mx-auto text-muted-foreground">
                   telah berkontribusi secara luar biasa sebagai relawan dalam kegiatan
@@ -454,46 +462,21 @@ export function VolunteerDashboardPage() {
       )}
 
       {/* 2. Dialog Konfirmasi Pembatalan Pendaftaran */}
-      {appToCancel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-lg border bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-start gap-4">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-                <AlertCircle size={20} />
-              </span>
-              <div>
-                <h3 className="font-heading text-lg font-extrabold text-foreground">
-                  Batalkan Pendaftaran?
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground leading-6">
-                  Apakah Anda yakin ingin membatalkan pendaftaran Anda untuk kegiatan{' '}
-                  <strong className="text-foreground">
-                    {getEventTitle(
-                      dashboard.eventLookup,
-                      visibleApplications.find((app) => app.id === appToCancel)?.eventId ?? '',
-                    )}
-                  </strong>
-                  ? Tindakan ini tidak dapat dibatalkan.
-                </p>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setAppToCancel(null)}
-                className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted"
-              >
-                Kembali
-              </button>
-              <button
-                onClick={() => handleCancelApplication(appToCancel)}
-                className="h-10 rounded-md bg-destructive px-4 text-sm font-bold text-destructive-foreground transition hover:bg-red-700"
-              >
-                Ya, Batalkan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {appToCancel ? (
+        <ConfirmDialog
+          tone="danger"
+          title="Batalkan pendaftaran?"
+          description={`Pendaftaran untuk ${getEventTitle(
+            dashboard.eventLookup,
+            visibleApplications.find((app) => app.id === appToCancel)?.eventId ?? '',
+          )} akan dibatalkan. Tindakan ini tidak dapat dibatalkan.`}
+          confirmLabel="Ya, batalkan"
+          cancelLabel="Kembali"
+          isPending={cancellingApplicationIds.includes(appToCancel)}
+          onCancel={() => setAppToCancel(null)}
+          onConfirm={() => handleCancelApplication(appToCancel)}
+        />
+      ) : null}
     </div>
   )
 }
@@ -591,10 +574,12 @@ function OverviewTab({
 function ApplicationsTab({
   applications,
   eventLookup,
+  cancellingApplicationIds,
   onCancelRequest,
 }: {
   applications: VolunteerApplication[]
   eventLookup: VolunteerEvent[]
+  cancellingApplicationIds: string[]
   onCancelRequest: (appId: string) => void
 }) {
   return (
@@ -604,10 +589,16 @@ function ApplicationsTab({
         title="Status pendaftaran event."
         description="Pantau aplikasi yang masih draft, terkirim, diterima, atau sudah selesai."
       />
-      <div className="grid gap-4">
-        {applications.map((application) => {
+      {applications.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-8 text-center text-sm font-semibold text-muted-foreground">
+          Belum ada aplikasi event. Cari event yang sesuai untuk mulai mendaftar.
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {applications.map((application) => {
           const event = eventLookup.find((item) => item.id === application.eventId)
           const organizer = event ? getOrganizerById(event.organizerId) : undefined
+          const isCancelling = cancellingApplicationIds.includes(application.id)
 
           return (
             <article
@@ -644,12 +635,14 @@ function ApplicationsTab({
               </div>
 
               <div className="flex items-center gap-3">
-                {application.status === 'Submitted' && (
+                {canCancelApplication(application.status) && (
                   <button
+                    type="button"
                     onClick={() => onCancelRequest(application.id)}
+                    disabled={isCancelling}
                     className="inline-flex h-10 items-center justify-center rounded-md border border-destructive/20 bg-destructive/5 px-4 text-sm font-bold text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
                   >
-                    Batalkan
+                    {isCancelling ? 'Membatalkan...' : 'Batalkan'}
                   </button>
                 )}
                 <Link
@@ -661,8 +654,9 @@ function ApplicationsTab({
               </div>
             </article>
           )
-        })}
-      </div>
+          })}
+        </div>
+      )}
     </section>
   )
 }
@@ -681,17 +675,27 @@ function CertificatesTab({
         title="Sertifikat volunteer."
         description="Setiap sertifikat mencatat kontribusi jam kerja sosialmu dan bisa digunakan sebagai bukti portofolio."
       />
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {certificates.map((certificate) => (
-          <CertificateCard
-            key={certificate.id}
-            certificate={certificate}
-            onPreview={onPreview}
-          />
-        ))}
-      </div>
+      {certificates.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-8 text-center text-sm font-semibold text-muted-foreground">
+          Belum ada sertifikat. Sertifikat akan muncul setelah kontribusi event selesai diverifikasi.
+        </div>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {certificates.map((certificate) => (
+            <CertificateCard
+              key={certificate.id}
+              certificate={certificate}
+              onPreview={onPreview}
+            />
+          ))}
+        </div>
+      )}
     </section>
   )
+}
+
+function canCancelApplication(status: VolunteerApplication['status']) {
+  return ['Submitted', 'Waitlisted', 'Accepted'].includes(status)
 }
 
 function SectionTitle({

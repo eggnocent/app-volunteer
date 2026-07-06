@@ -399,7 +399,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
                 <input
                   required
                   name="name"
-                  placeholder={isOrganizer ? 'Komunitas Peduli Kota' : 'Nadira Putri'}
+                  placeholder={isOrganizer ? 'Komunitas Peduli Kota' : 'Nama relawan'}
                   className={inputClassName}
                 />
               </Field>

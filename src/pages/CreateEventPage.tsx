@@ -356,7 +356,13 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
       ) : null}
 
       <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
-        <form className="space-y-6 rounded-lg border bg-card p-6 shadow-sm">
+        <form
+          className="space-y-6 rounded-lg border bg-card p-6 shadow-sm"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void publishPreview()
+          }}
+        >
           <FormSection
             icon={<FileText size={19} />}
             title="Informasi utama"
