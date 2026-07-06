@@ -31,11 +31,19 @@ export async function register(payload: ApiRegisterPayload) {
 }
 
 export async function me() {
-  return unwrapData(await apiRequest<ApiEnvelope<ApiUser>>('/api/auth/me'))
+  const payload = unwrapData(
+    await apiRequest<ApiEnvelope<ApiUser | ApiAuthResponse>>('/api/auth/me'),
+  )
+
+  return isAuthResponse(payload) ? payload.user : payload
 }
 
 export async function logout() {
   await apiRequest<void>('/api/auth/logout', {
     method: 'POST',
   })
+}
+
+function isAuthResponse(value: ApiUser | ApiAuthResponse): value is ApiAuthResponse {
+  return typeof value === 'object' && value !== null && 'user' in value
 }
