@@ -15,8 +15,8 @@ export function SiteHeader() {
   const dashboardHref = user ? getRoleHome(user.role) : '/'
   const eventsHref = user ? getRoleEvents(user.role) : '/events'
   const navItems = [
-    { label: 'Discover', to: '/home' },
-    { label: 'Explore Events', to: eventsHref },
+    { label: 'Beranda', to: '/home' },
+    { label: 'Jelajahi event', to: eventsHref },
   ]
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b bg-background/92 backdrop-blur">
-      <div className="flex h-16 w-full items-center justify-between gap-4 px-3 sm:px-4 lg:px-5">
+      <div className="flex h-16 items-center justify-between gap-4 px-3 sm:px-4 lg:px-5">
         <Logo />
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Main navigation">

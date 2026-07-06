@@ -248,11 +248,11 @@ export function OrganizerApplicantsPage() {
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <PageHeader
-        eyebrow="Organizer Applicants"
-        title="Kelola daftar applicant relawan."
+        eyebrow="Pendaftar Organizer"
+        title="Kelola daftar pendaftar relawan."
         description={
           focusedEvent
-            ? `Menampilkan applicant untuk ${focusedEvent.title}.`
+            ? `Menampilkan pendaftar untuk ${focusedEvent.title}.`
             : 'Pantau pendaftar, role, status, dan event yang mereka pilih dalam satu tabel.'
         }
         action={
@@ -266,7 +266,7 @@ export function OrganizerApplicantsPage() {
       />
 
       {isLoading ? (
-        <ApiNotice message="Memuat applicant..." tone="loading" />
+        <ApiNotice message="Memuat pendaftar..." tone="loading" />
       ) : null}
       {applicantsError ? (
         <ApiNotice
@@ -280,21 +280,21 @@ export function OrganizerApplicantsPage() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatsCard
-          label="Total applicant"
+          label="Total pendaftar"
           value={totalCount.toString()}
           helper={focusedEventId ? "untuk event ini" : "seluruh event"}
           icon={Users}
           tone="green"
         />
         <StatsCard
-          label="Accepted"
+          label="Diterima"
           value={acceptedCount.toString()}
           helper="siap briefing"
           icon={CheckCircle2}
           tone="yellow"
         />
         <StatsCard
-          label="Submitted"
+          label="Terkirim"
           value={submittedCount.toString()}
           helper="perlu review"
           icon={CalendarDays}
@@ -329,27 +329,27 @@ export function OrganizerApplicantsPage() {
             className="h-11 rounded-md border bg-background px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
           >
             <option>Semua status</option>
-            <option>Submitted</option>
-            <option>Accepted</option>
-            <option>Rejected</option>
-            <option>Completed</option>
+            <option value="Submitted">Terkirim</option>
+            <option value="Accepted">Diterima</option>
+            <option value="Rejected">Ditolak</option>
+            <option value="Completed">Selesai</option>
           </select>
         </div>
       </section>
 
       <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
         <div className="grid grid-cols-[1fr_auto] gap-4 border-b bg-muted px-4 py-3 text-xs font-bold uppercase text-muted-foreground lg:grid-cols-[1.2fr_1fr_150px_130px_120px_150px]">
-          <span>Applicant</span>
+          <span>Pendaftar</span>
           <span className="hidden lg:block">Event</span>
           <span className="hidden lg:block">Role</span>
-          <span className="hidden lg:block">Submitted</span>
+          <span className="hidden lg:block">Dikirim</span>
           <span>Status</span>
           <span className="text-right lg:text-left">Tindakan</span>
         </div>
         <div className="divide-y">
           {rows.length === 0 ? (
             <div className="p-8 text-center text-sm font-semibold text-muted-foreground">
-              Tidak ada applicant yang cocok dengan filter.
+              Tidak ada pendaftar yang cocok dengan filter.
             </div>
           ) : (
             rows.map(({ application, event }) => {
@@ -439,14 +439,14 @@ export function OrganizerApplicantsPage() {
                       className="inline-flex h-8 items-center justify-center rounded bg-secondary/30 px-3 text-xs font-bold text-secondary-foreground transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
                       title="Terbitkan sertifikat"
                     >
-                      {isPending ? 'Menerbitkan...' : 'Issue cert'}
+                      {isPending ? 'Menerbitkan...' : 'Terbitkan'}
                     </button>
                   ) : checkedInIds.includes(application.id) ||
                     issuedCertificateIds.includes(application.id) ? (
                     <span className="text-xs font-bold text-primary">
                       {issuedCertificateIds.includes(application.id)
-                        ? 'Cert issued'
-                        : 'Checked-in'}
+                        ? 'Sertifikat terbit'
+                        : 'Sudah hadir'}
                     </span>
                   ) : (
                     <span className="text-xs font-bold text-muted-foreground/50">
@@ -481,11 +481,11 @@ export function OrganizerApplicantsPage() {
       {rejectApplication ? (
         <ConfirmDialog
           tone="danger"
-          title="Tolak applicant?"
+          title="Tolak pendaftar?"
           description={`Aplikasi ${
             resource.applicantIdentities[rejectApplication.id]?.name ?? volunteerProfile.name
           } untuk ${getEventTitle(resource.events, rejectApplication.eventId)} akan ditolak.`}
-          confirmLabel="Tolak applicant"
+          confirmLabel="Tolak pendaftar"
           isPending={pendingApplicationIds.includes(rejectApplication.id)}
           onCancel={() => setRejectApplicationId(null)}
           onConfirm={() => void updateStatus(rejectApplication.id, 'Rejected')}
@@ -620,11 +620,11 @@ function ApplicantDetailModal({
     >
       <div className="space-y-5">
         {isLoading ? (
-          <ApiNotice message="Memuat detail applicant..." tone="loading" />
+          <ApiNotice message="Memuat detail pendaftar..." tone="loading" />
         ) : null}
         {error ? (
           <ApiNotice
-            message={`Sebagian detail applicant belum bisa dimuat. Menampilkan informasi dari daftar utama. ${error}`}
+            message={`Sebagian detail pendaftar belum bisa dimuat. Menampilkan informasi dari daftar utama. ${error}`}
             tone="error"
           />
         ) : null}
@@ -640,7 +640,7 @@ function ApplicantDetailModal({
         </div>
         <div>
           <p className="text-xs font-bold uppercase text-muted-foreground">
-            Availability
+            Ketersediaan
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {availability.map((item) => (
@@ -658,7 +658,7 @@ function ApplicantDetailModal({
       <aside className="space-y-4">
         <section className="rounded-lg border bg-deep-green p-4 text-primary-foreground">
           <p className="text-xs font-bold uppercase text-primary-foreground/70">
-            Review signal
+            Sinyal review
           </p>
           <h3 className="mt-2 font-heading text-2xl font-extrabold">
             Rekomendasi: review
@@ -677,7 +677,7 @@ function ApplicantDetailModal({
 
         <section className="rounded-lg border bg-card p-4">
           <p className="text-xs font-bold uppercase text-muted-foreground">
-            Attendance
+            Kehadiran
           </p>
           <p className="mt-2 text-sm font-bold text-foreground">
             {checkedIn ? 'Relawan sudah check-in' : 'Belum check-in'}

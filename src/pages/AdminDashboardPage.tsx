@@ -56,7 +56,7 @@ export function AdminDashboardPage() {
     <div className="space-y-6 pb-20 lg:pb-0">
       <PageHeader
         eyebrow="Super Admin"
-        title="Platform overview Migunani."
+        title="Ringkasan platform Migunani."
         description="Pantau statistik platform, kelola pengguna, event, dan organizer dari satu dashboard terpusat."
       />
 
@@ -87,14 +87,14 @@ export function AdminDashboardPage() {
         <div className="space-y-6">
           <section className="space-y-4">
             <SectionTitle
-              eyebrow="Recent users"
+              eyebrow="Pengguna terbaru"
               title="Pengguna terbaru."
               description="Daftar pengguna yang baru bergabung di platform Migunani."
             />
             <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
               <div className="grid grid-cols-[1fr_auto] gap-4 border-b bg-muted px-4 py-3 text-xs font-bold uppercase text-muted-foreground md:grid-cols-[1fr_140px_120px_100px]">
                 <span>Pengguna</span>
-                <span className="hidden md:block">Role</span>
+                <span className="hidden md:block">Peran</span>
                 <span className="hidden md:block">Bergabung</span>
                 <span>Status</span>
               </div>
@@ -144,7 +144,7 @@ export function AdminDashboardPage() {
           <article className="rounded-lg border bg-deep-green p-5 text-primary-foreground shadow-sm">
             <ShieldCheck size={22} className="text-secondary" />
             <h2 className="mt-4 font-heading text-2xl font-extrabold">
-              Platform health
+              Kesehatan platform
             </h2>
             <p className="mt-2 text-sm leading-6 text-primary-foreground/78">
               {activeEvents.length} event aktif dengan{' '}
@@ -157,7 +157,7 @@ export function AdminDashboardPage() {
                 value={`${activeEvents.length} event`}
               />
               <HealthRow
-                label="Organizer verified"
+                label="Organizer terverifikasi"
                 value={`${verifiedOrganizers.length}/${resource.organizers.length}`}
               />
               <HealthRow
@@ -168,7 +168,7 @@ export function AdminDashboardPage() {
           </article>
 
           <section className="rounded-lg border bg-secondary p-5 text-secondary-foreground shadow-sm">
-            <p className="text-sm font-bold uppercase">Quick actions</p>
+            <p className="text-sm font-bold uppercase">Aksi cepat</p>
             <h2 className="mt-2 font-heading text-2xl font-extrabold">
               Kelola platform.
             </h2>
@@ -185,7 +185,7 @@ export function AdminDashboardPage() {
                 <TrendingUp size={19} />
               </span>
               <div>
-                <h2 className="font-heading text-xl font-extrabold">Growth trend</h2>
+                <h2 className="font-heading text-xl font-extrabold">Tren pertumbuhan</h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   Platform menunjukkan pertumbuhan pengguna +12 bulan ini dengan
                   rata-rata 6 event baru per bulan.

@@ -11,10 +11,10 @@ type DashboardLayoutProps = {
 
 export function DashboardLayout({ area }: DashboardLayoutProps) {
   return (
-    <div className="min-h-svh bg-background text-foreground">
-      <div className="flex w-full gap-4 px-3 py-3 sm:px-4 lg:gap-5 lg:px-5">
+    <div className="min-h-svh overflow-x-hidden bg-background text-foreground">
+      <div className="flex gap-4 px-3 py-3 sm:px-4 lg:gap-5 lg:px-5">
         <DashboardSidebar area={area} />
-        <main className="min-w-0 flex-1 pb-20 lg:pb-0">
+        <main className="min-w-0 flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
           <div className="mb-4 flex justify-end">
             <NotificationCenter area={area} />
           </div>

@@ -340,20 +340,20 @@ export function RegisterPage({ role }: RegisterPageProps) {
   return (
     <StageTransition stage={stage}>
       <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-6xl items-center py-8">
-        <section className="grid w-full gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-lg border bg-deep-green p-8 text-primary-foreground shadow-sm">
+        <section className="grid w-full min-w-0 gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="min-w-0 rounded-lg border bg-deep-green p-6 text-primary-foreground shadow-sm sm:p-8">
           <span className="flex size-14 items-center justify-center rounded-md bg-secondary font-heading text-2xl font-extrabold text-secondary-foreground">
             M
           </span>
           <p className="mt-8 text-sm font-bold uppercase text-primary-foreground/70">
             {isOrganizer ? 'Register Organizer' : 'Register Relawan'}
           </p>
-          <h1 className="mt-3 font-heading text-4xl font-extrabold leading-tight sm:text-5xl">
+          <h1 className="mt-3 max-w-[19rem] break-words font-heading text-4xl font-extrabold leading-tight sm:max-w-xl sm:text-5xl">
             {isOrganizer
               ? 'Daftarkan organisasi untuk mulai membuka event.'
               : 'Buat akun relawan Migunani.'}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-8 text-primary-foreground/78">
+          <p className="mt-5 max-w-[19rem] break-words text-sm leading-7 text-primary-foreground/78 sm:max-w-xl sm:text-base sm:leading-8">
             {isOrganizer
               ? 'Form ini dibuat khusus untuk organisasi yang ingin membuka dan mengelola event.'
               : 'Form ini dibuat khusus untuk relawan yang ingin mengikuti kegiatan Migunani.'}

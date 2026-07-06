@@ -169,7 +169,7 @@ export function ApplyPage() {
       <PagePlaceholder
         eyebrow="Apply"
         title="Event tidak ditemukan."
-        description="Pilih event lain dari halaman Explore untuk membuka pendaftaran relawan."
+        description="Pilih event lain dari halaman jelajah event untuk membuka pendaftaran relawan."
       />
     )
   }

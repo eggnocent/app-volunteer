@@ -60,9 +60,9 @@ const tabs: Array<{
   label: string
   icon: typeof LayoutDashboard
 }> = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'applications', label: 'Applications', icon: ListChecks },
-  { id: 'certificates', label: 'Certificates', icon: BadgeCheck },
+  { id: 'overview', label: 'Ringkasan', icon: LayoutDashboard },
+  { id: 'applications', label: 'Aplikasi', icon: ListChecks },
+  { id: 'certificates', label: 'Sertifikat', icon: BadgeCheck },
 ]
 
 const statIcons = [Clock3, CheckCircle2, Award, HeartHandshake]
@@ -285,7 +285,7 @@ export function VolunteerDashboardPage() {
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <PageHeader
-        eyebrow="Volunteer Dashboard"
+        eyebrow="Dashboard Relawan"
         title={`Halo, ${dashboard.profile.name}.`}
         description="Pantau aplikasi event, jam kontribusi, sertifikat, dan ringkasan impact untuk portofolio keaktifanmu."
         className="border-0 bg-transparent p-0 shadow-none"
@@ -581,7 +581,7 @@ function OverviewTab({
               <TrendingUp size={19} />
             </span>
             <div>
-              <h2 className="font-heading text-xl font-extrabold">Impact summary</h2>
+              <h2 className="font-heading text-xl font-extrabold">Ringkasan impact</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {profile.name} aktif di {profile.interests.length}{' '}
                 kategori, punya {activeApplications} aplikasi berjalan, dan{' '}
@@ -600,7 +600,7 @@ function OverviewTab({
         </article>
 
         <article className="rounded-lg border bg-secondary p-5 text-secondary-foreground shadow-sm">
-          <p className="text-sm font-bold uppercase">Portfolio ready</p>
+          <p className="text-sm font-bold uppercase">Portofolio siap</p>
           <h2 className="mt-2 font-heading text-2xl font-extrabold">
             Bukti aktivitasmu tertata.
           </h2>
@@ -628,7 +628,7 @@ function ApplicationsTab({
   return (
     <section className="space-y-4">
       <SectionTitle
-        eyebrow="Applications"
+        eyebrow="Aplikasi"
         title="Status pendaftaran event."
         description="Pantau aplikasi yang masih draft, terkirim, diterima, atau sudah selesai."
       />
@@ -822,9 +822,9 @@ function getApplicationSteps(status: VolunteerApplication['status']) {
   if (status === 'Cancelled') {
     return [
       { order: 1, label: 'Draft', helper: 'Pendaftaran dibuat', active: true },
-      { order: 2, label: 'Cancelled', helper: 'Dibatalkan relawan', active: true },
-      { order: 3, label: 'Apply again', helper: 'Pilih event lain', active: false },
-      { order: 4, label: 'Done', helper: 'Tidak aktif', active: false },
+      { order: 2, label: 'Dibatalkan', helper: 'Dibatalkan relawan', active: true },
+      { order: 3, label: 'Daftar lagi', helper: 'Pilih event lain', active: false },
+      { order: 4, label: 'Selesai', helper: 'Tidak aktif', active: false },
     ]
   }
 
@@ -841,9 +841,9 @@ function getApplicationSteps(status: VolunteerApplication['status']) {
 
   return [
     { order: 1, label: 'Draft', helper: 'Role dan motivasi siap' },
-    { order: 2, label: 'Submitted', helper: 'Menunggu review' },
-    { order: 3, label: 'Accepted', helper: 'Siap briefing' },
-    { order: 4, label: 'Completed', helper: 'Sertifikat diproses' },
+    { order: 2, label: 'Terkirim', helper: 'Menunggu review' },
+    { order: 3, label: 'Diterima', helper: 'Siap briefing' },
+    { order: 4, label: 'Selesai', helper: 'Sertifikat diproses' },
   ].map((step, index) => ({ ...step, active: index <= activeIndex }))
 }
 

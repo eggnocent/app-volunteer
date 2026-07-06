@@ -93,9 +93,9 @@ export function OrganizerDashboardPage() {
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <PageHeader
-        eyebrow="Organizer Dashboard"
-        title="Kelola event, applicant, dan performa kegiatan relawan."
-        description="Dashboard organizer membantu penyelenggara melihat event aktif, keterisian kuota, applicant terbaru, dan kesiapan event berikutnya."
+        eyebrow="Dashboard Organizer"
+        title="Kelola event, pendaftar, dan performa relawan."
+        description="Pantau event aktif, keterisian kuota, pendaftar terbaru, dan kesiapan event berikutnya."
         action={
           <Link
             to="/organizer/create"
@@ -164,9 +164,9 @@ export function OrganizerDashboardPage() {
         <div className="space-y-6">
           <section className="space-y-4">
             <SectionTitle
-              eyebrow="Managed events"
+              eyebrow="Event dikelola"
               title="Event yang sedang dikelola."
-              description="Pantau status publikasi, jumlah applicant, dan keterisian slot relawan."
+              description="Pantau status publikasi, jumlah pendaftar, dan keterisian slot relawan."
             />
             <div className="grid gap-4">
               {visibleEvents.map((event) => (
@@ -182,15 +182,15 @@ export function OrganizerDashboardPage() {
 
           <section className="space-y-4">
             <SectionTitle
-              eyebrow="Applicant preview"
+              eyebrow="Pendaftar terbaru"
               title="Pendaftar terbaru."
-              description="Preview ini memberi gambaran siapa yang mendaftar dan role yang dipilih."
+              description="Lihat siapa yang mendaftar dan role yang dipilih."
             />
             <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
               <div className="grid grid-cols-[1fr_auto] gap-4 border-b bg-muted px-4 py-3 text-xs font-bold uppercase text-muted-foreground md:grid-cols-[1fr_160px_140px_120px]">
                 <span>Relawan</span>
                 <span className="hidden md:block">Role</span>
-                <span className="hidden md:block">Submitted</span>
+                <span className="hidden md:block">Dikirim</span>
                 <span>Status</span>
               </div>
               <div className="divide-y">
@@ -230,7 +230,7 @@ export function OrganizerDashboardPage() {
                 <BarChart3 size={19} />
               </span>
               <div>
-                <h2 className="font-heading text-xl font-extrabold">Event performance</h2>
+                <h2 className="font-heading text-xl font-extrabold">Performa event</h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   Rata-rata keterisian event aktif membantu organizer memantau
                   performa dan mengambil keputusan operasional lebih cepat.

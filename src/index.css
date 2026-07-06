@@ -75,6 +75,11 @@ html {
   scroll-behavior: smooth;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   min-width: 320px;
   margin: 0;
@@ -90,6 +95,14 @@ body {
 ::selection {
   background: var(--secondary);
   color: var(--secondary-foreground);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 button,

@@ -29,17 +29,17 @@ type MobileNavItem = {
 }
 
 const publicItems: MobileNavItem[] = [
-  { label: 'Home', to: '/home', icon: Home },
-  { label: 'Explore', to: '/events', icon: Search },
+  { label: 'Beranda', to: '/home', icon: Home },
+  { label: 'Event', to: '/events', icon: Search },
   { label: 'Masuk', to: '/', icon: LogIn },
   { label: 'Daftar', to: '/register', icon: UserPlus },
 ]
 
 const volunteerItems: MobileNavItem[] = [
   { label: 'Dashboard', to: '/volunteer/dashboard', icon: Home },
-  { label: 'Explore', to: '/volunteer/events', icon: Search },
+  { label: 'Event', to: '/volunteer/events', icon: Search },
   {
-    label: 'Apps',
+    label: 'Aplikasi',
     to: '/volunteer/dashboard?tab=applications',
     icon: LayoutDashboard,
   },
@@ -48,16 +48,16 @@ const volunteerItems: MobileNavItem[] = [
 
 const organizerItems: MobileNavItem[] = [
   { label: 'Dashboard', to: '/organizer/dashboard', icon: Home },
-  { label: 'Applicants', to: '/organizer/applicants', icon: LayoutDashboard },
-  { label: 'Certs', to: '/organizer/certificates', icon: FileCheck },
-  { label: 'Create', to: '/organizer/create', icon: CalendarPlus },
+  { label: 'Pendaftar', to: '/organizer/applicants', icon: LayoutDashboard },
+  { label: 'Sertifikat', to: '/organizer/certificates', icon: FileCheck },
+  { label: 'Buat', to: '/organizer/create', icon: CalendarPlus },
   { label: 'Logout', to: '/', icon: LogOut, logout: true },
 ]
 
 const adminItems: MobileNavItem[] = [
   { label: 'Dashboard', to: '/portal/dashboard', icon: Home },
-  { label: 'Users', to: '/portal/users', icon: Users },
-  { label: 'Events', to: '/portal/events', icon: CalendarPlus },
+  { label: 'Pengguna', to: '/portal/users', icon: Users },
+  { label: 'Event', to: '/portal/events', icon: CalendarPlus },
   { label: 'Organizers', to: '/portal/organizers', icon: Building2 },
   { label: 'Logout', to: '/', icon: LogOut, logout: true },
 ]
@@ -68,9 +68,9 @@ export function MobileNav({ area }: MobileNavProps) {
   const publicSessionItems: MobileNavItem[] =
     status === 'authenticated' && user
       ? [
-          { label: 'Home', to: '/home', icon: Home },
+          { label: 'Beranda', to: '/home', icon: Home },
           {
-            label: 'Explore',
+            label: 'Event',
             to: getRoleEvents(user.role),
             icon: Search,
           },
@@ -89,8 +89,9 @@ export function MobileNav({ area }: MobileNavProps) {
 
   return (
     <nav
-      className="fixed inset-x-3 bottom-3 z-40 grid rounded-lg border bg-card/95 p-1 shadow-lg backdrop-blur lg:hidden"
+      className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 grid rounded-lg border bg-card/95 p-1 shadow-lg backdrop-blur lg:hidden"
       style={{ gridTemplateColumns: `repeat(${mobileItems.length}, minmax(0, 1fr))` }}
+      aria-label="Mobile navigation"
     >
       {mobileItems.map((item) =>
         item.logout ? (
@@ -105,10 +106,10 @@ export function MobileNav({ area }: MobileNavProps) {
                 navigate('/', { replace: true })
               }
             }}
-            className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-md text-[11px] font-semibold text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 text-[11px] font-semibold text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
           >
             <item.icon size={17} />
-            <span>{item.label}</span>
+            <span className="max-w-full truncate">{item.label}</span>
           </button>
         ) : (
           <NavLink
@@ -118,12 +119,13 @@ export function MobileNav({ area }: MobileNavProps) {
             className={({ isActive }) =>
               cn(
                 'flex min-h-12 flex-col items-center justify-center gap-1 rounded-md text-[11px] font-semibold text-muted-foreground transition',
+                'min-w-0 px-1',
                 isActive && 'bg-primary text-primary-foreground',
               )
             }
           >
             <item.icon size={17} />
-            <span>{item.label}</span>
+            <span className="max-w-full truncate">{item.label}</span>
           </NavLink>
         ),
       )}

@@ -6,9 +6,9 @@ import { SiteHeader } from '@/layouts/SiteHeader'
 
 export function AppLayout() {
   return (
-    <div className="min-h-svh bg-background text-foreground">
+    <div className="min-h-svh overflow-x-hidden bg-background text-foreground">
       <SiteHeader />
-      <main className="w-full px-3 py-4 sm:px-4 lg:px-5">
+      <main className="px-3 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 sm:px-4 lg:px-5 lg:pb-5">
         <PageTransition>
           <Outlet />
         </PageTransition>

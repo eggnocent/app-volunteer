@@ -31,9 +31,9 @@ export function FilterBar({
   className,
 }: FilterBarProps) {
   return (
-    <section className={cn('rounded-lg border bg-card p-4 shadow-sm', className)}>
-      <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto]">
-        <label className="relative block">
+    <section className={cn('max-w-full overflow-hidden rounded-lg border bg-card p-3 shadow-sm sm:p-4', className)}>
+      <div className="grid min-w-0 gap-3 lg:grid-cols-[1fr_150px_170px]">
+        <label className="relative block min-w-0">
           <Search
             size={18}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -42,14 +42,14 @@ export function FilterBar({
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Cari event, kota, atau organizer"
-            className="h-11 w-full rounded-md border bg-background pl-10 pr-3 text-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="h-11 w-full min-w-0 rounded-md border bg-background pl-10 pr-3 text-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
         </label>
 
         <select
           value={selectedMode}
           onChange={(event) => onModeChange(event.target.value as EventMode | 'Semua')}
-          className="h-11 rounded-md border bg-background px-3 text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          className="h-11 w-full rounded-md border bg-background px-3 text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
         >
           {modeOptions.map((mode) => (
             <option key={mode} value={mode}>
@@ -70,8 +70,8 @@ export function FilterBar({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground">
+      <div className="scrollbar-none -mx-1 mt-4 flex max-w-full items-center gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+        <span className="inline-flex shrink-0 items-center gap-2 text-sm font-bold text-muted-foreground">
           <SlidersHorizontal size={16} />
           Kategori
         </span>

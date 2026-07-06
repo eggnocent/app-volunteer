@@ -153,9 +153,9 @@ export function OrganizerCertificatesPage() {
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <PageHeader
-        eyebrow="Organizer Certificates"
+        eyebrow="Sertifikat Organizer"
         title="Kelola sertifikat relawan."
-        description="Pantau credential yang sudah diterbitkan dan revoke sertifikat yang perlu dibatalkan."
+        description="Pantau credential yang sudah diterbitkan dan batalkan sertifikat yang perlu dicabut."
       />
 
       {isLoading ? (
@@ -180,14 +180,14 @@ export function OrganizerCertificatesPage() {
           tone="green"
         />
         <StatsCard
-          label="Issued"
+          label="Terbit"
           value={issuedCount.toString()}
           helper="masih valid"
           icon={CheckCircle2}
           tone="yellow"
         />
         <StatsCard
-          label="Revoked"
+          label="Dicabut"
           value={revokedCount.toString()}
           helper="dibatalkan organizer"
           icon={ShieldAlert}
@@ -214,7 +214,7 @@ export function OrganizerCertificatesPage() {
         <div className="grid grid-cols-[1fr_auto] gap-4 border-b bg-muted px-4 py-3 text-xs font-bold uppercase text-muted-foreground lg:grid-cols-[1fr_1fr_170px_120px_140px]">
           <span>Credential</span>
           <span className="hidden lg:block">Event</span>
-          <span className="hidden lg:block">Issued</span>
+          <span className="hidden lg:block">Terbit</span>
           <span>Status</span>
           <span className="text-right lg:text-left">Tindakan</span>
         </div>

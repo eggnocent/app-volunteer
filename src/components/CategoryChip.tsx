@@ -31,7 +31,7 @@ export function CategoryChip({
       onClick={onClick}
       style={style}
       className={cn(
-        'inline-flex w-fit items-center rounded-full border px-3 py-1.5 text-xs font-bold transition',
+        'inline-flex max-w-full shrink-0 items-center rounded-full border px-3 py-1.5 text-xs font-bold leading-none transition',
         active
           ? 'border-transparent shadow-sm'
           : 'border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground',
@@ -39,7 +39,7 @@ export function CategoryChip({
         className,
       )}
     >
-      {label}
+      <span className="truncate">{label}</span>
     </Comp>
   )
 }

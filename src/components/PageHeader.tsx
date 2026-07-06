@@ -7,6 +7,7 @@ type PageHeaderProps = {
   title: string
   description?: string
   action?: ReactNode
+  density?: 'compact' | 'spacious'
   className?: string
 }
 
@@ -15,26 +16,44 @@ export function PageHeader({
   title,
   description,
   action,
+  density = 'compact',
   className,
 }: PageHeaderProps) {
+  const spacious = density === 'spacious'
+
   return (
     <header
       className={cn(
-        'flex flex-col gap-5 rounded-lg border bg-card p-6 shadow-sm md:flex-row md:items-end md:justify-between',
+        'flex min-w-0 flex-col rounded-lg border bg-card shadow-sm md:flex-row md:items-end md:justify-between',
+        spacious ? 'gap-5 p-6' : 'gap-4 p-4 sm:p-5',
         className,
       )}
     >
-      <div className="max-w-3xl">
+      <div className="min-w-0 max-w-3xl">
         {eyebrow ? (
-          <p className="text-sm font-bold uppercase tracking-normal text-primary">
+          <p className="text-xs font-bold uppercase tracking-normal text-primary sm:text-sm">
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="mt-2 font-heading text-3xl font-extrabold text-foreground md:text-5xl">
+        <h1
+          className={cn(
+            'mt-2 max-w-full break-words font-heading font-extrabold leading-tight text-foreground',
+            spacious
+              ? 'text-3xl md:text-5xl'
+              : 'max-w-[19rem] text-2xl sm:max-w-full sm:text-3xl md:text-4xl',
+          )}
+        >
           {title}
         </h1>
         {description ? (
-          <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
+          <p
+            className={cn(
+              'mt-3 max-w-2xl leading-7 text-muted-foreground',
+              spacious
+                ? 'text-base'
+                : 'max-w-[19rem] break-words text-sm sm:max-w-2xl sm:text-base',
+            )}
+          >
             {description}
           </p>
         ) : null}

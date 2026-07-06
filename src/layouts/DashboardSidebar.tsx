@@ -32,16 +32,16 @@ const volunteerItems = [
 
 const organizerItems = [
   { label: 'Dashboard', to: '/organizer/dashboard', icon: BarChart3 },
-  { label: 'Applicants', to: '/organizer/applicants', icon: ListChecks },
-  { label: 'Certificates', to: '/organizer/certificates', icon: BadgeCheck },
-  { label: 'Explore Events', to: '/organizer/events', icon: Home },
-  { label: 'Create Event', to: '/organizer/create', icon: CalendarPlus },
+  { label: 'Pendaftar', to: '/organizer/applicants', icon: ListChecks },
+  { label: 'Sertifikat', to: '/organizer/certificates', icon: BadgeCheck },
+  { label: 'Jelajahi Event', to: '/organizer/events', icon: Home },
+  { label: 'Buat Event', to: '/organizer/create', icon: CalendarPlus },
 ]
 
 const adminItems = [
   { label: 'Dashboard', to: '/portal/dashboard', icon: LayoutDashboard },
-  { label: 'Users', to: '/portal/users', icon: Users },
-  { label: 'Events', to: '/portal/events', icon: CalendarPlus },
+  { label: 'Pengguna', to: '/portal/users', icon: Users },
+  { label: 'Event', to: '/portal/events', icon: CalendarPlus },
   { label: 'Organizers', to: '/portal/organizers', icon: Building2 },
 ]
 
@@ -64,7 +64,7 @@ export function DashboardSidebar({ area }: DashboardSidebarProps) {
       <Logo to={area === 'admin' ? '/portal/dashboard' : area === 'volunteer' ? '/volunteer/dashboard' : '/organizer/dashboard'} />
 
       <div className="mt-8 space-y-6">
-        <SidebarGroup label={area === 'admin' ? 'Super Admin' : area === 'volunteer' ? 'Volunteer' : 'Organizer'} items={items} />
+        <SidebarGroup label={area === 'admin' ? 'Super Admin' : area === 'volunteer' ? 'Relawan' : 'Organizer'} items={items} />
       </div>
       <button
         type="button"

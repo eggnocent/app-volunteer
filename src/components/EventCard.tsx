@@ -42,7 +42,7 @@ export function EventCard({
   return (
     <article
       className={cn(
-        'group relative overflow-hidden rounded-lg border bg-card shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md',
+        'group relative max-w-full overflow-hidden rounded-lg border bg-card shadow-sm transition hover:border-primary/30 hover:shadow-md',
         isList && 'grid md:grid-cols-[260px_1fr]',
         className,
       )}
@@ -51,7 +51,7 @@ export function EventCard({
         to={detailPath}
         className={cn(
           'relative block overflow-hidden bg-muted',
-          isList ? 'h-56 md:h-full' : 'h-52',
+          isList ? 'h-48 md:h-full' : 'h-44 sm:h-48',
           variant === 'compact' && 'h-40',
         )}
       >
@@ -60,13 +60,8 @@ export function EventCard({
           alt={event.title}
           className="size-full object-cover transition duration-500 group-hover:scale-105"
         />
-        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+        <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
           <StatusBadge status={event.status} />
-          {event.featured ? (
-            <span className="rounded-full border border-secondary/70 bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground">
-              Featured
-            </span>
-          ) : null}
           {typeof matchScore === 'number' ? (
             <span className="rounded-full border border-white/20 bg-card/95 px-2.5 py-1 text-xs font-bold text-primary shadow-sm backdrop-blur">
               Cocok {matchScore}%
@@ -89,13 +84,20 @@ export function EventCard({
         </button>
       ) : null}
 
-      <div className="flex min-w-0 flex-col gap-4 p-5">
+      <div className="flex min-w-0 flex-col gap-4 p-4 sm:p-5">
         <div className="space-y-3">
-          <CategoryChip category={event.category} />
+          <div className="flex min-w-0 items-center gap-2">
+            <CategoryChip category={event.category} />
+            {event.featured ? (
+              <span className="shrink-0 rounded-full bg-secondary/20 px-2 py-1 text-[11px] font-bold text-secondary-foreground">
+                Pilihan
+              </span>
+            ) : null}
+          </div>
           <div>
             <Link
               to={detailPath}
-              className="font-heading text-xl font-extrabold leading-tight text-foreground transition hover:text-primary"
+              className="line-clamp-2 font-heading text-lg font-extrabold leading-tight text-foreground transition hover:text-primary sm:text-xl"
             >
               {event.title}
             </Link>
@@ -107,7 +109,7 @@ export function EventCard({
 
         <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
           <MetaItem icon={CalendarDays} label={formatDate(event.date)} />
-          <MetaItem icon={Clock} label={formatEventTime(event.startTime, event.endTime)} />
+          <MetaItem icon={Clock} label={formatEventTime(event.startTime, event.endTime)} className="hidden sm:flex" />
           <MetaItem icon={MapPin} label={`${event.city} · ${event.mode}`} />
           <MetaItem icon={Users} label={`${event.registered}/${event.quota} relawan`} />
         </div>
@@ -115,7 +117,7 @@ export function EventCard({
         <div className="mt-auto space-y-3">
           {matchReasons.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {matchReasons.map((reason) => (
+              {matchReasons.slice(0, 2).map((reason) => (
                 <span
                   key={reason}
                   className="rounded-full bg-accent px-2.5 py-1 text-xs font-bold text-accent-foreground"
@@ -138,7 +140,7 @@ export function EventCard({
           {primaryAction ? (
             <Link
               to={primaryAction.to}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-deep-green sm:w-fit"
             >
               {primaryAction.label}
               <ArrowRight size={16} />
@@ -153,11 +155,12 @@ export function EventCard({
 type MetaItemProps = {
   icon: typeof CalendarDays
   label: string
+  className?: string
 }
 
-function MetaItem({ icon: Icon, label }: MetaItemProps) {
+function MetaItem({ icon: Icon, label, className }: MetaItemProps) {
   return (
-    <span className="flex min-w-0 items-center gap-2">
+    <span className={cn('flex min-w-0 items-center gap-2', className)}>
       <Icon size={15} className="shrink-0 text-primary" />
       <span className="truncate">{label}</span>
     </span>

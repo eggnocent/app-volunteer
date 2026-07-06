@@ -69,21 +69,19 @@ export function HomePage() {
     : eventsHref
 
   return (
-    <div className="space-y-8 pb-20 lg:pb-0">
-      <section className="relative min-h-[calc(100svh-6rem)] overflow-hidden rounded-lg border bg-deep-green text-primary-foreground shadow-sm">
-        <div className="absolute -left-24 top-8 h-52 w-80 rotate-[-18deg] rounded-[42%] bg-primary opacity-45 blur-2xl" />
-        <div className="absolute -right-24 bottom-0 h-64 w-96 rotate-[-22deg] rounded-[45%] bg-secondary opacity-80 blur-2xl" />
-        <div className="relative grid min-h-[calc(100svh-6rem)] items-center gap-8 p-6 sm:p-8 lg:grid-cols-[1.1fr_0.9fr] lg:p-10">
-          <div className="flex flex-col justify-center gap-8">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-bold">
+    <div className="space-y-7">
+      <section className="overflow-hidden rounded-lg border bg-deep-green text-primary-foreground shadow-sm">
+        <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1.1fr)_360px] lg:items-start lg:p-8">
+          <div className="min-w-0 space-y-6">
+            <div className="max-w-[19rem] sm:max-w-3xl">
+              <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold sm:text-sm">
                 <Sparkles size={16} />
-                Marketplace volunteer untuk aksi yang berdampak
+                <span className="truncate">Marketplace volunteer untuk aksi berdampak</span>
               </span>
-              <h1 className="mt-6 max-w-4xl font-heading text-4xl font-extrabold leading-tight sm:text-6xl lg:text-7xl">
+              <h1 className="mt-5 max-w-[19rem] break-words font-heading text-4xl font-extrabold leading-tight sm:max-w-3xl sm:text-5xl lg:text-6xl">
                 Temukan event volunteer yang migunani.
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-primary-foreground/78 sm:text-lg">
+              <p className="mt-4 max-w-[19rem] break-words text-sm leading-7 text-primary-foreground/78 sm:max-w-2xl sm:text-base">
                 Jelajahi kegiatan sosial, pendidikan, lingkungan, dan komunitas.
                 Pilih event, daftar sebagai relawan, lalu simpan bukti kontribusimu
                 dalam satu dashboard.
@@ -91,14 +89,14 @@ export function HomePage() {
             </div>
 
             <form
-              className="rounded-lg border border-white/15 bg-white/10 p-2 backdrop-blur"
+              className="max-w-[19rem] rounded-lg border border-white/15 bg-white/10 p-2 backdrop-blur sm:max-w-3xl"
               onSubmit={(event) => {
                 event.preventDefault()
                 navigate(exploreHref)
               }}
             >
-              <div className="grid gap-2 rounded-md bg-card p-2 text-foreground shadow-sm md:grid-cols-[1fr_auto]">
-                <label className="relative block">
+              <div className="grid min-w-0 gap-2 rounded-md bg-card p-2 text-foreground shadow-sm sm:grid-cols-[1fr_auto]">
+                <label className="relative block min-w-0">
                   <Search
                     size={18}
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -107,65 +105,46 @@ export function HomePage() {
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Cari cleanup, mentoring, kesehatan..."
-                    className="h-12 w-full rounded-md border bg-background pl-10 pr-3 text-sm font-semibold text-muted-foreground outline-none"
+                    className="h-12 w-full min-w-0 rounded-md border bg-background pl-10 pr-3 text-sm font-semibold text-muted-foreground outline-none"
                     aria-label="Cari event volunteer"
                   />
                 </label>
                 <Link
                   to={exploreHref}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+                  className="inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
                 >
-                  Explore event
+                  Cari event
                   <ArrowRight size={17} />
                 </Link>
               </div>
             </form>
-          </div>
-
-          <div className="grid content-center gap-4">
-            <div className="rounded-lg border border-black/10 bg-secondary p-5 text-secondary-foreground shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-sm font-bold uppercase">Role relawan</p>
-                <span className="flex size-11 items-center justify-center rounded-md bg-brand-black text-white">
-                  <HeartHandshake size={20} />
-                </span>
-              </div>
-              <h2 className="mt-3 font-heading text-3xl font-extrabold">
-                Cari event, daftar, lalu bangun portofolio kontribusi.
-              </h2>
-              <p className="mt-3 text-sm leading-6">
-                Masuk sebagai relawan untuk mendaftar event, memantau aplikasi,
-                sertifikat, dan impact summary.
-              </p>
+            <div className="flex flex-col gap-3 text-sm font-bold sm:flex-row sm:flex-wrap">
               <Link
                 to={isAuthenticated ? dashboardHref : '/?next=%2Fvolunteer%2Fdashboard'}
-                className="mt-5 inline-flex items-center gap-2 text-sm font-bold"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-secondary px-4 text-secondary-foreground transition hover:bg-secondary/85"
               >
+                <HeartHandshake size={16} />
                 {isAuthenticated ? 'Buka dashboard' : 'Masuk sebagai relawan'}
-                <ArrowRight size={16} />
               </Link>
-            </div>
-            <div className="rounded-lg border border-white/15 bg-card p-5 text-foreground shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-bold text-muted-foreground">
-                    Untuk organizer
-                  </p>
-                  <h2 className="mt-1 font-heading text-2xl font-extrabold">
-                    Publish event, pantau applicant.
-                  </h2>
-                </div>
-                <span className="flex size-12 items-center justify-center rounded-md bg-accent text-accent-foreground">
-                  <Building2 size={22} />
-                </span>
-              </div>
               <Link
                 to={isAuthenticated ? dashboardHref : '/?next=%2Forganizer%2Fdashboard'}
-                className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/15 bg-white/10 px-4 text-primary-foreground transition hover:bg-white/15"
               >
+                <Building2 size={16} />
                 {isAuthenticated ? 'Buka dashboard' : 'Masuk sebagai organizer'}
-                <ArrowRight size={16} />
               </Link>
+            </div>
+          </div>
+
+          <div className="grid min-w-0 content-start gap-3 rounded-lg border border-white/15 bg-white/10 p-4 lg:self-start">
+            <p className="text-xs font-bold uppercase text-primary-foreground/65">
+              Ringkasan platform
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <HeroMetric label="Event aktif" value={home.stats.eventCount.toString()} />
+              <HeroMetric label="Slot relawan" value={home.stats.totalSlots.toString()} />
+              <HeroMetric label="Pendaftar" value={home.stats.totalRegistered.toString()} />
+              <HeroMetric label="Kategori" value={home.stats.categoryCount.toString()} />
             </div>
           </div>
         </div>
@@ -212,13 +191,13 @@ export function HomePage() {
         />
       </section>
 
-      <section className="grid gap-5 rounded-lg border bg-card p-6 shadow-sm lg:grid-cols-[0.85fr_1.15fr] lg:p-8">
-        <div className="rounded-lg bg-deep-green p-6 text-primary-foreground">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-bold">
+      <section className="grid gap-5 rounded-lg border bg-card p-5 shadow-sm lg:grid-cols-[0.75fr_1.25fr] lg:p-6">
+        <div className="rounded-lg bg-deep-green p-5 text-primary-foreground">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold sm:text-sm">
             <TrendingUp size={16} />
             SDG 8 Focus
           </span>
-          <h2 className="mt-5 font-heading text-3xl font-extrabold md:text-5xl">
+          <h2 className="mt-5 font-heading text-2xl font-extrabold md:text-4xl">
             Decent Work and Economic Growth.
           </h2>
           <p className="mt-4 text-sm leading-7 text-primary-foreground/78">
@@ -237,7 +216,7 @@ export function HomePage() {
           />
           <SdgPoint
             title="Organizer growth"
-            description="Organisasi mendapat kanal rekrutmen relawan, applicant preview, dan performa event."
+            description="Organisasi mendapat kanal rekrutmen relawan, preview pendaftar, dan performa event."
           />
         </div>
       </section>
@@ -245,8 +224,8 @@ export function HomePage() {
       <section className="space-y-4">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-bold uppercase text-primary">Category shortcuts</p>
-            <h2 className="mt-2 font-heading text-3xl font-extrabold">
+            <p className="text-sm font-bold uppercase text-primary">Shortcut kategori</p>
+            <h2 className="mt-2 font-heading text-2xl font-extrabold sm:text-3xl">
               Mulai dari isu yang kamu peduli.
             </h2>
           </div>
@@ -278,8 +257,8 @@ export function HomePage() {
       <section className="space-y-4">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-bold uppercase text-primary">Featured events</p>
-            <h2 className="mt-2 font-heading text-3xl font-extrabold">
+            <p className="text-sm font-bold uppercase text-primary">Event pilihan</p>
+            <h2 className="mt-2 font-heading text-2xl font-extrabold sm:text-3xl">
               Event pilihan minggu ini.
             </h2>
           </div>
@@ -287,7 +266,7 @@ export function HomePage() {
             to={eventsHref}
             className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
           >
-            Explore semua
+            Lihat semua
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -317,6 +296,19 @@ function getRoleEvents(role: UserRole) {
   }
 
   return '/volunteer/events'
+}
+
+function HeroMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-white/10 bg-white/10 p-3">
+      <p className="font-heading text-2xl font-extrabold text-primary-foreground">
+        {value}
+      </p>
+      <p className="mt-1 text-xs font-semibold text-primary-foreground/70">
+        {label}
+      </p>
+    </div>
+  )
 }
 
 function getRoleHome(role: UserRole) {

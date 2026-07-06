@@ -181,9 +181,9 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
       <PageHeader
-        eyebrow="Explore Events"
-        title="Cari event volunteer yang cocok dengan waktu, minat, dan target kontribusimu."
-        description="Gunakan filter kategori dan mode kegiatan untuk menemukan event yang paling relevan."
+        eyebrow="Jelajahi event"
+        title="Cari event yang cocok dengan waktu dan minatmu."
+        description="Filter kategori, mode kegiatan, dan urutkan event yang paling relevan."
       />
 
       {isLoading ? (
@@ -215,7 +215,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
         <select
           value={sort}
           onChange={(event) => setSort(event.target.value as SortOption)}
-          className="h-10 w-fit rounded-md border bg-card px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          className="h-10 w-full rounded-md border bg-card px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 sm:w-fit"
         >
           <option value="relevant">Paling relevan</option>
           <option value="newest">Terbaru</option>
@@ -230,8 +230,8 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
         <section
           className={
             view === 'grid'
-              ? 'grid gap-5 md:grid-cols-2 xl:grid-cols-3'
-              : 'grid gap-5'
+              ? 'grid gap-4 md:grid-cols-2 xl:grid-cols-3'
+              : 'grid gap-4'
           }
         >
           {sortedEvents.map((event) => (
