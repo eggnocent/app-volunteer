@@ -7,13 +7,13 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
 import { categories } from '@/data'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/providers/useAuth'
 import type { ApiRegisterPayload } from '@/services/api/types'
-import type { EventCategory } from '@/types/migunani'
+import type { EventCategory, UserRole } from '@/types/migunani'
 import type { FormEvent } from 'react'
 
 type RegisterPageProps = {
@@ -49,7 +49,7 @@ const organizerFocusOptions = [
 
 export function RegisterPage({ role }: RegisterPageProps) {
   const [searchParams] = useSearchParams()
-  const { register, status } = useAuth()
+  const { register, status, user } = useAuth()
   const [stage, setStage] = useState<'form' | 'onboarding' | 'success'>('form')
   const [isSaving, setIsSaving] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
@@ -85,6 +85,10 @@ export function RegisterPage({ role }: RegisterPageProps) {
     : nextParam?.startsWith('/volunteer/')
       ? `/?next=${encodeURIComponent(nextParam)}`
       : '/'
+
+  if (stage === 'form' && status === 'authenticated' && user) {
+    return <Navigate to={getRoleHome(user.role)} replace />
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -587,6 +591,18 @@ function getErrorMessage(error: unknown) {
   }
 
   return 'Register gagal. Periksa kembali data akun.'
+}
+
+function getRoleHome(role: UserRole) {
+  if (role === 'admin') {
+    return '/portal/dashboard'
+  }
+
+  if (role === 'organizer') {
+    return '/organizer/dashboard'
+  }
+
+  return '/volunteer/dashboard'
 }
 
 function toggleString(

@@ -61,6 +61,8 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
   const [published, setPublished] = useState(false)
   const [isSavingEvent, setIsSavingEvent] = useState(false)
   const [isLoadingEvent, setIsLoadingEvent] = useState(isEditMode)
+  const [hasManualEdit, setHasManualEdit] = useState(false)
+  const [savedEventHref, setSavedEventHref] = useState<string | null>(null)
   const [publishError, setPublishError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -111,6 +113,36 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
   ])
 
   const organizer = getOrganizerById(previewEvent.organizerId)
+  const validationErrors = useMemo(
+    () =>
+      validateEventForm({
+        title,
+        category,
+        city,
+        location,
+        date,
+        startTime,
+        endTime,
+        quota,
+        description,
+        selectedRoles,
+      }),
+    [
+      category,
+      city,
+      date,
+      description,
+      endTime,
+      location,
+      quota,
+      selectedRoles,
+      startTime,
+      title,
+    ],
+  )
+  const mustEditFallbackBeforeSubmit = isEditMode && Boolean(loadError) && !hasManualEdit
+  const canSubmitEvent =
+    !isLoadingEvent && validationErrors.length === 0 && !mustEditFallbackBeforeSubmit
 
   useEffect(() => {
     if (!isEditMode || !eventId) {
@@ -165,6 +197,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
   }, [eventId, isEditMode, user?.organizerId])
 
   function toggleRole(role: VolunteerRole) {
+    markFormEdited()
     setSelectedRoles((current) =>
       current.includes(role)
         ? current.filter((item) => item !== role)
@@ -172,7 +205,22 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
     )
   }
 
+  function markFormEdited() {
+    setHasManualEdit(true)
+    setPublished(false)
+    setSavedEventHref(null)
+  }
+
   async function publishPreview() {
+    if (!canSubmitEvent) {
+      setPublishError(
+        mustEditFallbackBeforeSubmit
+          ? 'Data event belum berhasil dimuat. Ubah salah satu field untuk memastikan perubahan yang ingin disimpan.'
+          : validationErrors[0] ?? 'Lengkapi informasi event sebelum menyimpan.',
+      )
+      return
+    }
+
     const organizerId = user?.organizerId ?? fallbackOrganizerId
     setIsSavingEvent(true)
     setPublishError(null)
@@ -195,15 +243,15 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
       }
 
       const targetEventId = eventId
+      const savedEvent = isEditMode && targetEventId
+        ? await organizerApi.updateOrganizerEvent(organizerId, targetEventId, payload)
+        : await organizerApi.createOrganizerEvent(organizerId, payload)
 
-      if (isEditMode && targetEventId) {
-        await organizerApi.updateOrganizerEvent(organizerId, targetEventId, payload)
-      } else {
-        await organizerApi.createOrganizerEvent(organizerId, payload)
-      }
-
+      const mappedEvent = mapEvent(savedEvent)
       setIsSavingEvent(false)
+      setSavedEventHref(`/organizer/events/${mappedEvent.slug}`)
       setPublished(true)
+      setHasManualEdit(false)
     } catch (error) {
       setPublishError(getErrorMessage(error))
       setIsSavingEvent(false)
@@ -236,7 +284,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
           <button
             type="button"
             onClick={publishPreview}
-            disabled={isSavingEvent || isLoadingEvent}
+            disabled={isSavingEvent || isLoadingEvent || mustEditFallbackBeforeSubmit}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
           >
             {isSavingEvent ? (
@@ -280,6 +328,22 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                 Event sudah tersimpan dan akan tampil mengikuti status publikasi
                 yang berlaku di dashboard organizer.
               </p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                {savedEventHref ? (
+                  <Link
+                    to={savedEventHref}
+                    className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+                  >
+                    Lihat event
+                  </Link>
+                ) : null}
+                <Link
+                  to="/organizer/dashboard"
+                  className="inline-flex h-10 items-center justify-center rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted"
+                >
+                  Kembali ke dashboard
+                </Link>
+              </div>
             </div>
           </div>
         </section>
@@ -302,14 +366,20 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
               <Field label="Judul event" className="md:col-span-2">
                 <input
                   value={title}
-                  onChange={(event) => setTitle(event.target.value)}
+                  onChange={(event) => {
+                    markFormEdited()
+                    setTitle(event.target.value)
+                  }}
                   className={inputClassName}
                 />
               </Field>
               <Field label="Kategori">
                 <select
                   value={category}
-                  onChange={(event) => setCategory(event.target.value as EventCategory)}
+                  onChange={(event) => {
+                    markFormEdited()
+                    setCategory(event.target.value as EventCategory)
+                  }}
                   className={inputClassName}
                 >
                   {categories.map((item) => (
@@ -322,7 +392,10 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
               <Field label="Mode kegiatan">
                 <select
                   value={mode}
-                  onChange={(event) => setMode(event.target.value as EventMode)}
+                  onChange={(event) => {
+                    markFormEdited()
+                    setMode(event.target.value as EventMode)
+                  }}
                   className={inputClassName}
                 >
                   {modeOptions.map((item) => (
@@ -335,7 +408,10 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
               <Field label="Deskripsi" className="md:col-span-2">
                 <textarea
                   value={description}
-                  onChange={(event) => setDescription(event.target.value)}
+                  onChange={(event) => {
+                    markFormEdited()
+                    setDescription(event.target.value)
+                  }}
                   rows={5}
                   className={cn(inputClassName, 'h-auto resize-none leading-7')}
                 />
@@ -352,14 +428,20 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
               <Field label="Kota">
                 <input
                   value={city}
-                  onChange={(event) => setCity(event.target.value)}
+                  onChange={(event) => {
+                    markFormEdited()
+                    setCity(event.target.value)
+                  }}
                   className={inputClassName}
                 />
               </Field>
               <Field label="Lokasi">
                 <input
                   value={location}
-                  onChange={(event) => setLocation(event.target.value)}
+                  onChange={(event) => {
+                    markFormEdited()
+                    setLocation(event.target.value)
+                  }}
                   className={inputClassName}
                 />
               </Field>
@@ -367,7 +449,10 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                 <input
                   type="date"
                   value={date}
-                  onChange={(event) => setDate(event.target.value)}
+                  onChange={(event) => {
+                    markFormEdited()
+                    setDate(event.target.value)
+                  }}
                   className={inputClassName}
                 />
               </Field>
@@ -376,7 +461,10 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                   <input
                     type="time"
                     value={startTime}
-                    onChange={(event) => setStartTime(event.target.value)}
+                    onChange={(event) => {
+                      markFormEdited()
+                      setStartTime(event.target.value)
+                    }}
                     className={inputClassName}
                   />
                 </Field>
@@ -384,7 +472,10 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                   <input
                     type="time"
                     value={endTime}
-                    onChange={(event) => setEndTime(event.target.value)}
+                    onChange={(event) => {
+                      markFormEdited()
+                      setEndTime(event.target.value)
+                    }}
                     className={inputClassName}
                   />
                 </Field>
@@ -404,7 +495,10 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                   min="10"
                   max="150"
                   value={quota}
-                  onChange={(event) => setQuota(Number(event.target.value))}
+                  onChange={(event) => {
+                    markFormEdited()
+                    setQuota(Number(event.target.value))
+                  }}
                   className="w-full accent-primary"
                 />
               </Field>
@@ -436,14 +530,20 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
                 <Field label="Benefit, pisahkan koma">
                   <input
                     value={benefits}
-                    onChange={(event) => setBenefits(event.target.value)}
+                    onChange={(event) => {
+                      markFormEdited()
+                      setBenefits(event.target.value)
+                    }}
                     className={inputClassName}
                   />
                 </Field>
                 <Field label="Skill, pisahkan koma">
                   <input
                     value={skills}
-                    onChange={(event) => setSkills(event.target.value)}
+                    onChange={(event) => {
+                      markFormEdited()
+                      setSkills(event.target.value)
+                    }}
                     className={inputClassName}
                   />
                 </Field>
@@ -563,6 +663,92 @@ function calculateDuration(startTime: string, endTime: string) {
   const duration = Math.max(end - start, 60)
 
   return Math.round(duration / 60)
+}
+
+function validateEventForm({
+  title,
+  category,
+  city,
+  location,
+  date,
+  startTime,
+  endTime,
+  quota,
+  description,
+  selectedRoles,
+}: {
+  title: string
+  category: EventCategory
+  city: string
+  location: string
+  date: string
+  startTime: string
+  endTime: string
+  quota: number
+  description: string
+  selectedRoles: VolunteerRole[]
+}) {
+  const errors: string[] = []
+
+  if (title.trim().length < 4) {
+    errors.push('Judul event minimal 4 karakter.')
+  }
+
+  if (!category) {
+    errors.push('Kategori event wajib dipilih.')
+  }
+
+  if (city.trim().length < 2) {
+    errors.push('Kota event wajib diisi.')
+  }
+
+  if (location.trim().length < 4) {
+    errors.push('Lokasi event wajib diisi dengan jelas.')
+  }
+
+  if (!isValidDate(date)) {
+    errors.push('Tanggal event belum valid.')
+  }
+
+  if (!isValidTime(startTime) || !isValidTime(endTime)) {
+    errors.push('Jam mulai dan selesai wajib diisi.')
+  } else if (getTimeInMinutes(endTime) <= getTimeInMinutes(startTime)) {
+    errors.push('Jam selesai harus setelah jam mulai.')
+  }
+
+  if (!Number.isFinite(quota) || quota <= 0) {
+    errors.push('Kuota relawan harus lebih dari 0.')
+  }
+
+  if (description.trim().length < 24) {
+    errors.push('Deskripsi event minimal 24 karakter.')
+  }
+
+  if (selectedRoles.length === 0) {
+    errors.push('Pilih minimal satu role relawan.')
+  }
+
+  return errors
+}
+
+function isValidDate(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value))
+}
+
+function isValidTime(value: string) {
+  if (!/^\d{2}:\d{2}$/.test(value)) {
+    return false
+  }
+
+  const [hour = 0, minute = 0] = value.split(':').map(Number)
+
+  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59
+}
+
+function getTimeInMinutes(value: string) {
+  const [hour = 0, minute = 0] = value.split(':').map(Number)
+
+  return hour * 60 + minute
 }
 
 function getErrorMessage(error: unknown) {

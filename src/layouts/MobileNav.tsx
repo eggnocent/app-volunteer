@@ -14,6 +14,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/providers/useAuth'
+import type { UserRole } from '@/types/migunani'
 import type { LucideIcon } from 'lucide-react'
 
 type MobileNavProps = {
@@ -63,12 +64,25 @@ const adminItems: MobileNavItem[] = [
 
 export function MobileNav({ area }: MobileNavProps) {
   const navigate = useNavigate()
-  const { logout, status } = useAuth()
+  const { logout, status, user } = useAuth()
+  const publicSessionItems: MobileNavItem[] =
+    status === 'authenticated' && user
+      ? [
+          { label: 'Home', to: '/home', icon: Home },
+          {
+            label: 'Explore',
+            to: getRoleEvents(user.role),
+            icon: Search,
+          },
+          { label: 'Dashboard', to: getRoleHome(user.role), icon: LayoutDashboard },
+          { label: 'Logout', to: '/', icon: LogOut, logout: true },
+        ]
+      : publicItems
   const mobileItems =
     area === 'admin'
       ? adminItems
       : area === 'public'
-        ? publicItems
+        ? publicSessionItems
         : area === 'volunteer'
           ? volunteerItems
           : organizerItems
@@ -115,4 +129,28 @@ export function MobileNav({ area }: MobileNavProps) {
       )}
     </nav>
   )
+}
+
+function getRoleEvents(role: UserRole) {
+  if (role === 'admin') {
+    return '/portal/events'
+  }
+
+  if (role === 'organizer') {
+    return '/organizer/events'
+  }
+
+  return '/volunteer/events'
+}
+
+function getRoleHome(role: UserRole) {
+  if (role === 'admin') {
+    return '/portal/dashboard'
+  }
+
+  if (role === 'organizer') {
+    return '/organizer/dashboard'
+  }
+
+  return '/volunteer/dashboard'
 }

@@ -7,7 +7,7 @@ import type { VolunteerEvent } from '@/types/migunani'
 
 type OrganizerEventRowProps = {
   event: VolunteerEvent
-  detailPathPrefix?: string
+  detailPathPrefix?: string | null
   canEdit?: boolean
 }
 
@@ -27,12 +27,18 @@ export function OrganizerEventRow({
             {event.category}
           </span>
         </div>
-        <Link
-          to={`${detailPathPrefix}/${event.slug}`}
-          className="mt-3 block truncate font-heading text-lg font-extrabold text-foreground transition hover:text-primary"
-        >
-          {event.title}
-        </Link>
+        {detailPathPrefix ? (
+          <Link
+            to={`${detailPathPrefix}/${event.slug}`}
+            className="mt-3 block truncate font-heading text-lg font-extrabold text-foreground transition hover:text-primary"
+          >
+            {event.title}
+          </Link>
+        ) : (
+          <h2 className="mt-3 truncate font-heading text-lg font-extrabold text-foreground">
+            {event.title}
+          </h2>
+        )}
         <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-2">
             <CalendarDays size={15} className="text-primary" />

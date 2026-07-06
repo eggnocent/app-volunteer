@@ -1,4 +1,4 @@
-import { Bookmark, CalendarDays, Clock, MapPin, Users } from 'lucide-react'
+import { ArrowRight, Bookmark, CalendarDays, Clock, MapPin, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { CategoryChip } from '@/components/CategoryChip'
@@ -16,6 +16,10 @@ type EventCardProps = {
   variant?: 'grid' | 'list' | 'compact'
   matchScore?: number
   matchReasons?: string[]
+  primaryAction?: {
+    label: string
+    to: string
+  }
   className?: string
 }
 
@@ -28,6 +32,7 @@ export function EventCard({
   variant = 'grid',
   matchScore,
   matchReasons = [],
+  primaryAction,
   className,
 }: EventCardProps) {
   const fill = getFillPercentage(event.registered, event.quota)
@@ -130,6 +135,15 @@ export function EventCard({
             <span>{organizer?.name ?? 'Organizer komunitas'}</span>
             <span>{fill}% terisi</span>
           </div>
+          {primaryAction ? (
+            <Link
+              to={primaryAction.to}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+            >
+              {primaryAction.label}
+              <ArrowRight size={16} />
+            </Link>
+          ) : null}
         </div>
       </div>
     </article>

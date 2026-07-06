@@ -22,8 +22,14 @@ import {
 } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { mapCategory, mapEvent, publicApi } from '@/services/api'
+import { useAuth } from '@/providers/useAuth'
+import type { UserRole } from '@/types/migunani'
 
 export function HomePage() {
+  const { status, user } = useAuth()
+  const isAuthenticated = status === 'authenticated' && user
+  const dashboardHref = user ? getRoleHome(user.role) : '/'
+  const eventsHref = user ? getRoleEvents(user.role) : '/events'
   const fallbackHome = useMemo(
     () => ({
       stats: {
@@ -58,8 +64,8 @@ export function HomePage() {
   } = useAsyncResource(loadHome, fallbackHome)
   const [searchQuery, setSearchQuery] = useState('')
   const exploreHref = searchQuery.trim()
-    ? `/events?q=${encodeURIComponent(searchQuery.trim())}`
-    : '/events'
+    ? `${eventsHref}?q=${encodeURIComponent(searchQuery.trim())}`
+    : eventsHref
 
   return (
     <div className="space-y-8 pb-20 lg:pb-0">
@@ -131,10 +137,10 @@ export function HomePage() {
                 sertifikat, dan impact summary.
               </p>
               <Link
-                to="/?next=%2Fvolunteer%2Fdashboard"
+                to={isAuthenticated ? dashboardHref : '/?next=%2Fvolunteer%2Fdashboard'}
                 className="mt-5 inline-flex items-center gap-2 text-sm font-bold"
               >
-                Masuk sebagai relawan
+                {isAuthenticated ? 'Buka dashboard' : 'Masuk sebagai relawan'}
                 <ArrowRight size={16} />
               </Link>
             </div>
@@ -153,10 +159,10 @@ export function HomePage() {
                 </span>
               </div>
               <Link
-                to="/?next=%2Forganizer%2Fdashboard"
+                to={isAuthenticated ? dashboardHref : '/?next=%2Forganizer%2Fdashboard'}
                 className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary"
               >
-                Masuk sebagai organizer
+                {isAuthenticated ? 'Buka dashboard' : 'Masuk sebagai organizer'}
                 <ArrowRight size={16} />
               </Link>
             </div>
@@ -244,7 +250,7 @@ export function HomePage() {
             </h2>
           </div>
           <Link
-            to="/events"
+            to={eventsHref}
             className="inline-flex h-10 w-fit items-center gap-2 rounded-md border bg-card px-4 text-sm font-bold transition hover:bg-muted"
           >
             Semua kategori
@@ -255,7 +261,7 @@ export function HomePage() {
           {home.categories.slice(0, 4).map((category) => (
             <Link
               key={category.id}
-              to="/events"
+              to={eventsHref}
               className="rounded-lg border bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
             >
               <CategoryChip category={category} active />
@@ -277,7 +283,7 @@ export function HomePage() {
             </h2>
           </div>
           <Link
-            to="/events"
+            to={eventsHref}
             className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
           >
             Explore semua
@@ -290,12 +296,66 @@ export function HomePage() {
               key={event.id}
               event={event}
               organizer={getOrganizerById(event.organizerId)}
+              detailPathPrefix={user?.role === 'volunteer' ? '/volunteer/events' : '/events'}
+              primaryAction={getFeaturedEventAction(user?.role, event.id)}
             />
           ))}
         </div>
       </section>
     </div>
   )
+}
+
+function getRoleEvents(role: UserRole) {
+  if (role === 'admin') {
+    return '/portal/events'
+  }
+
+  if (role === 'organizer') {
+    return '/organizer/events'
+  }
+
+  return '/volunteer/events'
+}
+
+function getRoleHome(role: UserRole) {
+  if (role === 'admin') {
+    return '/portal/dashboard'
+  }
+
+  if (role === 'organizer') {
+    return '/organizer/dashboard'
+  }
+
+  return '/volunteer/dashboard'
+}
+
+function getFeaturedEventAction(role: UserRole | undefined, eventId: string) {
+  if (role === 'admin') {
+    return {
+      label: 'Kelola event',
+      to: '/portal/events',
+    }
+  }
+
+  if (role === 'organizer') {
+    return {
+      label: 'Kelola event',
+      to: '/organizer/events',
+    }
+  }
+
+  if (role === 'volunteer') {
+    return {
+      label: 'Daftar',
+      to: `/volunteer/apply/${eventId}`,
+    }
+  }
+
+  return {
+    label: 'Daftar',
+    to: `/?next=${encodeURIComponent(`/volunteer/apply/${eventId}`)}`,
+  }
 }
 
 function ApiNotice({

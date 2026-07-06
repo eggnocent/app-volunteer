@@ -106,11 +106,21 @@ export function ApplyPage() {
   }, [availability.length, currentStep, motivation, selectedRole])
 
   if (!event) {
+    if (isLoading) {
+      return (
+        <PagePlaceholder
+          eyebrow="Apply"
+          title="Memuat event."
+          description="Kami sedang menyiapkan form pendaftaran untuk event ini."
+        />
+      )
+    }
+
     return (
       <PagePlaceholder
         eyebrow="Apply"
         title="Event tidak ditemukan."
-        description="Pilih event dari halaman Explore untuk membuka flow pendaftaran relawan."
+        description="Pilih event lain dari halaman Explore untuk membuka pendaftaran relawan."
       />
     )
   }

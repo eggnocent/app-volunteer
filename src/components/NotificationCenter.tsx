@@ -34,11 +34,12 @@ export function NotificationCenter({ area }: NotificationCenterProps) {
     () => notificationApi.getNotifications(),
     [],
   )
-  const { data: apiNotifications } = useAsyncResource(
-    loadNotifications,
-    fallbackNotifications,
-  )
-  const notifications = apiNotifications.length > 0 ? apiNotifications : fallbackNotifications
+  const {
+    data: apiNotifications,
+    error,
+    isLoading,
+  } = useAsyncResource(loadNotifications, [])
+  const notifications = error ? fallbackNotifications : apiNotifications
   const unreadCount = notifications.filter(
     (notification) => !notification.readAt && !readIds.includes(notification.id),
   ).length
@@ -60,7 +61,7 @@ export function NotificationCenter({ area }: NotificationCenterProps) {
 
   async function markAllAsRead() {
     const unreadIds = notifications
-      .filter((notification) => !notification.readAt)
+      .filter((notification) => !notification.readAt && !readIds.includes(notification.id))
       .map((notification) => notification.id)
     setReadIds((current) => Array.from(new Set([...current, ...unreadIds])))
 
@@ -121,7 +122,25 @@ export function NotificationCenter({ area }: NotificationCenterProps) {
           ) : null}
 
           <div className="max-h-[420px] divide-y overflow-y-auto">
-            {notifications.map((notification) => {
+            {isLoading ? (
+              <div className="p-4">
+                <div className="h-14 animate-pulse rounded-md bg-muted" />
+                <div className="mt-3 h-14 animate-pulse rounded-md bg-muted" />
+              </div>
+            ) : null}
+
+            {!isLoading && notifications.length === 0 ? (
+              <div className="p-6 text-center">
+                <p className="font-heading text-lg font-extrabold text-foreground">
+                  Belum ada notifikasi
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Update terbaru untuk akunmu akan muncul di sini.
+                </p>
+              </div>
+            ) : null}
+
+            {!isLoading && notifications.map((notification) => {
               const Icon = notificationIcons[notification.kind]
               const read = Boolean(notification.readAt) || readIds.includes(notification.id)
 

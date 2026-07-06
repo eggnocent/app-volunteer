@@ -7,17 +7,22 @@ import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getEventMatch } from '@/lib/match'
 import { mapEvent, organizerApi, publicApi, volunteerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
-import type { EventCategory, EventMode } from '@/types/migunani'
+import type { EventCategory, EventMode, UserRole } from '@/types/migunani'
 
 type EventsPageProps = {
   viewer?: 'public' | 'volunteer' | 'organizer'
 }
 
+type EventActionContext = 'public' | UserRole
+
 type SortOption = 'relevant' | 'newest' | 'remaining' | 'match'
 
 export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   const [searchParams] = useSearchParams()
-  const { user } = useAuth()
+  const { status, user } = useAuth()
+  const actionContext: EventActionContext =
+    viewer === 'public' && status === 'authenticated' && user ? user.role : viewer
+  const isVolunteerContext = actionContext === 'volunteer'
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | 'Semua'>(
     'Semua',
@@ -40,7 +45,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
         : await publicApi.getEvents()
     const mappedEvents = apiEvents.map(mapEvent)
     const savedEventIds =
-      viewer === 'volunteer'
+      isVolunteerContext
         ? (await volunteerApi.getSavedEvents()).map((event) => event.id)
         : mappedEvents
             .filter((event) => 'isSaved' in event && Boolean(event.isSaved))
@@ -50,7 +55,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
       events: mappedEvents,
       savedEventIds,
     }
-  }, [organizerId, viewer])
+  }, [isVolunteerContext, organizerId, viewer])
   const {
     data: resource,
     error: resourceError,
@@ -62,6 +67,8 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
       ? '/volunteer/events'
       : viewer === 'organizer'
         ? '/organizer/events'
+        : isVolunteerContext
+          ? '/volunteer/events'
         : '/events'
 
   const filteredEvents = useMemo(() => {
@@ -103,7 +110,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
         return b.quota - b.registered - (a.quota - a.registered)
       }
 
-      if (sort === 'match') {
+      if (sort === 'match' && isVolunteerContext) {
         return (
           getEventMatch(b, volunteerProfile).matchScore -
           getEventMatch(a, volunteerProfile).matchScore
@@ -115,7 +122,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 
       return bRelevant - aRelevant || a.date.localeCompare(b.date)
     })
-  }, [filteredEvents, sort])
+  }, [filteredEvents, isVolunteerContext, sort])
 
   async function toggleSaved(eventId: string) {
     const currentSaved = isEventSaved(eventId, resource.savedEventIds, savedOverrides)
@@ -174,7 +181,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
           <option value="relevant">Paling relevan</option>
           <option value="newest">Terbaru</option>
           <option value="remaining">Kuota tersisa</option>
-          {viewer === 'volunteer' ? (
+          {isVolunteerContext ? (
             <option value="match">Match tertinggi</option>
           ) : null}
         </select>
@@ -194,10 +201,11 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
               event={event}
               organizer={getOrganizerById(event.organizerId)}
               saved={isEventSaved(event.id, resource.savedEventIds, savedOverrides)}
-              onSavedChange={viewer === 'volunteer' ? toggleSaved : undefined}
+              onSavedChange={isVolunteerContext ? toggleSaved : undefined}
               detailPathPrefix={detailPathPrefix}
               variant={view}
-              {...(viewer === 'volunteer'
+              primaryAction={getEventCardAction(actionContext, event.id, viewer === 'organizer')}
+              {...(isVolunteerContext
                 ? getEventMatch(event, volunteerProfile)
                 : {})}
             />
@@ -213,6 +221,45 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
       )}
     </div>
   )
+}
+
+function getEventCardAction(
+  context: EventActionContext,
+  eventId: string,
+  canEditSpecificEvent: boolean,
+) {
+  if (context === 'admin') {
+    return {
+      label: 'Kelola event',
+      to: '/portal/events',
+    }
+  }
+
+  if (context === 'organizer') {
+    if (!canEditSpecificEvent) {
+      return {
+        label: 'Kelola event',
+        to: '/organizer/events',
+      }
+    }
+
+    return {
+      label: 'Edit event',
+      to: `/organizer/events/${eventId}/edit`,
+    }
+  }
+
+  if (context === 'volunteer') {
+    return {
+      label: 'Daftar',
+      to: `/volunteer/apply/${eventId}`,
+    }
+  }
+
+  return {
+    label: 'Daftar',
+    to: `/?next=${encodeURIComponent(`/volunteer/apply/${eventId}`)}`,
+  }
 }
 
 function isEventSaved(

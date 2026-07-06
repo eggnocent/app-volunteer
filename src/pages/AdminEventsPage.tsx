@@ -169,7 +169,7 @@ export function AdminEventsPage() {
       <section className="grid gap-4">
         {filteredEvents.map((event) => (
           <div key={event.id} className="space-y-2">
-            <OrganizerEventRow event={event} detailPathPrefix="/portal/events" />
+            <OrganizerEventRow event={event} detailPathPrefix={null} />
             <select
               value={event.status}
               onChange={(selectEvent) =>

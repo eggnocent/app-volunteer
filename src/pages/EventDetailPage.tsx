@@ -2,12 +2,13 @@ import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
+  Bookmark,
   CheckCircle2,
   MapPin,
   ShieldCheck,
   Star,
 } from 'lucide-react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import {
@@ -26,14 +27,21 @@ import {
 } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
-import { mapApplication, mapEvent, publicApi } from '@/services/api'
+import { useAuth } from '@/providers/useAuth'
+import { mapApplication, mapEvent, publicApi, volunteerApi } from '@/services/api'
+import type { UserRole } from '@/types/migunani'
 
 type EventDetailPageProps = {
   viewer?: 'public' | 'volunteer' | 'organizer'
 }
 
+type EventActionContext = 'public' | UserRole
+
 export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
   const { slug } = useParams()
+  const { status, user } = useAuth()
+  const actionContext: EventActionContext =
+    viewer === 'public' && status === 'authenticated' && user ? user.role : viewer
   const fallbackEvent = slug ? getEventBySlug(slug) : undefined
   const fallbackResource = useMemo(
     () =>
@@ -44,6 +52,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
             volunteerApplication: volunteerApplications.find(
               (application) => application.eventId === fallbackEvent.id,
             ),
+            isSaved: volunteerProfile.savedEventIds.includes(fallbackEvent.id),
           }
         : undefined,
     [fallbackEvent],
@@ -61,29 +70,44 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
       volunteerApplication: apiEvent.myApplication
         ? mapApplication(apiEvent.myApplication)
         : undefined,
+      isSaved: Boolean(apiEvent.isSaved),
     }
   }, [slug])
   const { data: detailResource, error: detailError, isLoading } = useAsyncResource(
     loadEvent,
     fallbackResource,
   )
+  const [savedOverride, setSavedOverride] = useState<boolean | null>(null)
   const event = detailResource?.event
   const organizer = event ? getOrganizerById(event.organizerId) : undefined
 
   if (!event) {
+    if (isLoading) {
+      return (
+        <PagePlaceholder
+          eyebrow="Event Detail"
+          title="Memuat detail event."
+          description="Kami sedang mengambil informasi terbaru untuk event ini."
+        />
+      )
+    }
+
     return (
       <PagePlaceholder
         eyebrow="Event Detail"
         title="Event tidak ditemukan."
-        description="Route detail sudah siap. Nanti state kosong ini akan dipoles setelah komponen utama tersedia."
+        description="Event yang kamu buka tidak tersedia atau sudah tidak dipublikasikan."
       />
     )
   }
 
   const relatedEvents = detailResource.relatedEvents
   const volunteerApplication = detailResource.volunteerApplication
-  const isVolunteerView = viewer === 'volunteer'
-  const isOrganizerView = viewer === 'organizer'
+  const isSaved = savedOverride ?? Boolean(detailResource.isSaved)
+  const isVolunteerView = actionContext === 'volunteer'
+  const isOrganizerView = actionContext === 'organizer'
+  const isAdminView = actionContext === 'admin'
+  const canManageSpecificEvent = viewer === 'organizer'
   const applyHref = isVolunteerView
     ? `/volunteer/apply/${event.id}`
     : `/?next=${encodeURIComponent(`/volunteer/apply/${event.id}`)}`
@@ -91,12 +115,33 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
     ? '/volunteer/dashboard'
     : isOrganizerView
       ? '/organizer/dashboard'
+      : isAdminView
+        ? '/portal/events'
       : '/events'
   const relatedDetailPathPrefix = isVolunteerView
     ? '/volunteer/events'
-    : isOrganizerView
+    : viewer === 'organizer'
       ? '/organizer/events'
       : '/events'
+
+  async function toggleSavedEvent() {
+    if (!event) {
+      return
+    }
+
+    const nextSaved = !isSaved
+    setSavedOverride(nextSaved)
+
+    try {
+      if (nextSaved) {
+        await volunteerApi.saveEvent(event.id)
+      } else {
+        await volunteerApi.removeSavedEvent(event.id)
+      }
+    } catch {
+      setSavedOverride(isSaved)
+    }
+  }
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
@@ -105,7 +150,11 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
         className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition hover:text-primary"
       >
         <ArrowLeft size={16} />
-        {isVolunteerView || isOrganizerView ? 'Kembali ke dashboard' : 'Kembali ke explore'}
+        {isVolunteerView || isOrganizerView
+          ? 'Kembali ke dashboard'
+          : isAdminView
+            ? 'Kembali ke kelola event'
+            : 'Kembali ke explore'}
       </Link>
 
       {isLoading ? (
@@ -150,6 +199,8 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
                 applyHref={applyHref}
                 isVolunteerView={isVolunteerView}
                 isOrganizerView={isOrganizerView}
+                isAdminView={isAdminView}
+                canManageSpecificEvent={canManageSpecificEvent}
                 eventId={event.id}
                 status={volunteerApplication?.status}
               />
@@ -214,10 +265,22 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
 
         <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <EventDetailPanel event={event} organizer={organizer} />
+          {isVolunteerView ? (
+            <button
+              type="button"
+              onClick={() => void toggleSavedEvent()}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border bg-card px-5 text-sm font-bold transition hover:bg-muted"
+            >
+              <Bookmark size={17} fill={isSaved ? 'currentColor' : 'none'} />
+              {isSaved ? 'Hapus dari tersimpan' : 'Simpan event'}
+            </button>
+          ) : null}
           <EventAction
             applyHref={applyHref}
             isVolunteerView={isVolunteerView}
             isOrganizerView={isOrganizerView}
+            isAdminView={isAdminView}
+            canManageSpecificEvent={canManageSpecificEvent}
             eventId={event.id}
             status={volunteerApplication?.status}
             fullWidth
@@ -242,6 +305,11 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
                 saved={volunteerProfile.savedEventIds.includes(relatedEvent.id)}
                 detailPathPrefix={relatedDetailPathPrefix}
                 variant="compact"
+                primaryAction={getRelatedEventAction(
+                  actionContext,
+                  relatedEvent.id,
+                  viewer === 'organizer',
+                )}
               />
             ))}
           </div>
@@ -249,6 +317,45 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
       ) : null}
     </div>
   )
+}
+
+function getRelatedEventAction(
+  context: EventActionContext,
+  eventId: string,
+  canEditSpecificEvent: boolean,
+) {
+  if (context === 'admin') {
+    return {
+      label: 'Kelola event',
+      to: '/portal/events',
+    }
+  }
+
+  if (context === 'organizer') {
+    if (!canEditSpecificEvent) {
+      return {
+        label: 'Kelola event',
+        to: '/organizer/events',
+      }
+    }
+
+    return {
+      label: 'Edit event',
+      to: `/organizer/events/${eventId}/edit`,
+    }
+  }
+
+  if (context === 'volunteer') {
+    return {
+      label: 'Daftar',
+      to: `/volunteer/apply/${eventId}`,
+    }
+  }
+
+  return {
+    label: 'Daftar',
+    to: `/?next=${encodeURIComponent(`/volunteer/apply/${eventId}`)}`,
+  }
 }
 
 function ApiNotice({
@@ -275,6 +382,8 @@ function EventAction({
   applyHref,
   isVolunteerView,
   isOrganizerView,
+  isAdminView,
+  canManageSpecificEvent,
   eventId,
   status,
   fullWidth = false,
@@ -282,11 +391,30 @@ function EventAction({
   applyHref: string
   isVolunteerView: boolean
   isOrganizerView: boolean
+  isAdminView: boolean
+  canManageSpecificEvent: boolean
   eventId: string
   status?: string
   fullWidth?: boolean
 }) {
   if (isOrganizerView) {
+    if (!canManageSpecificEvent) {
+      return (
+        <div className={fullWidth ? 'grid gap-3' : 'flex flex-col gap-3 sm:flex-row'}>
+          <div className="rounded-md border bg-accent px-4 py-3 text-sm font-bold text-accent-foreground">
+            Masuk sebagai organizer
+          </div>
+          <Link
+            to="/organizer/events"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+          >
+            Kelola event organizer
+            <ArrowRight size={17} />
+          </Link>
+        </div>
+      )
+    }
+
     return (
       <div className={fullWidth ? 'grid gap-3' : 'flex flex-col gap-3 sm:flex-row'}>
         <div className="rounded-md border bg-accent px-4 py-3 text-sm font-bold text-accent-foreground">
@@ -304,6 +432,23 @@ function EventAction({
           className="inline-flex h-11 items-center justify-center gap-2 rounded-md border bg-card px-5 text-sm font-bold transition hover:bg-muted"
         >
           Edit event
+        </Link>
+      </div>
+    )
+  }
+
+  if (isAdminView) {
+    return (
+      <div className={fullWidth ? 'grid gap-3' : 'flex flex-col gap-3 sm:flex-row'}>
+        <div className="rounded-md border bg-accent px-4 py-3 text-sm font-bold text-accent-foreground">
+          Masuk sebagai admin
+        </div>
+        <Link
+          to="/portal/events"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+        >
+          Kelola status event
+          <ArrowRight size={17} />
         </Link>
       </div>
     )
