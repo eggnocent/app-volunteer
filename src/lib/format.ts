@@ -11,11 +11,23 @@ const weekdayFormatter = new Intl.DateTimeFormat('id-ID', {
 const numberFormatter = new Intl.NumberFormat('id-ID')
 
 export function formatDate(date: string) {
-  return dateFormatter.format(new Date(date))
+  const parsedDate = new Date(date)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'Tanggal belum diisi'
+  }
+
+  return dateFormatter.format(parsedDate)
 }
 
 export function formatWeekday(date: string) {
-  return weekdayFormatter.format(new Date(date))
+  const parsedDate = new Date(date)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'Hari belum diisi'
+  }
+
+  return weekdayFormatter.format(parsedDate)
 }
 
 export function formatNumber(value: number) {
