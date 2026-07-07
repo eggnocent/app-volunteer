@@ -2,6 +2,7 @@ import { ArrowRight, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
+import { LoadingModal } from '@/components'
 import { useAuth } from '@/providers/useAuth'
 import type { FormEvent } from 'react'
 import type { UserRole } from '@/types/migunani'
@@ -12,29 +13,37 @@ export function AdminPortalPage() {
   const { login, status } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
   const nextParam = searchParams.get('next')
   const nextHref = nextParam?.startsWith('/portal/')
     ? nextParam
     : '/portal/dashboard'
-  const isSubmitting = status === 'loading'
+  const isSubmitting = status === 'loading' || isRedirecting
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError(null)
+    setIsRedirecting(true)
 
     try {
-      const user = await login({ email, password })
+      const [user] = await Promise.all([login({ email, password }), wait(650)])
       navigate(user.role === 'admin' ? nextHref : getRoleHome(user.role), {
         replace: true,
       })
     } catch (error) {
       setLoginError(getErrorMessage(error))
+      setIsRedirecting(false)
     }
   }
 
   return (
     <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-5xl items-center py-8">
+      <LoadingModal
+        open={isSubmitting}
+        title="Memeriksa akses admin"
+        description="Kami sedang memvalidasi akses dan menyiapkan portal super admin."
+      />
       <section className="grid w-full gap-6 lg:grid-cols-[1fr_1fr]">
         <div className="rounded-lg border bg-deep-green p-8 text-primary-foreground shadow-sm">
           <span className="flex size-14 items-center justify-center rounded-md bg-secondary font-heading text-2xl font-extrabold text-secondary-foreground">
@@ -151,4 +160,10 @@ function getErrorMessage(error: unknown) {
   }
 
   return 'Login gagal. Periksa email dan password.'
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
 }

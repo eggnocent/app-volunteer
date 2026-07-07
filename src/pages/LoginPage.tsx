@@ -2,6 +2,7 @@ import { ArrowRight, Building2, HeartHandshake } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
+import { LoadingModal } from '@/components'
 import { useAuth } from '@/providers/useAuth'
 import type { FormEvent } from 'react'
 import type { UserRole } from '@/types/migunani'
@@ -12,6 +13,7 @@ export function LoginPage() {
   const { login, refresh, status, user } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
   const nextParam = searchParams.get('next')
   const nextHref = getSafeNextHref(nextParam)
@@ -24,7 +26,7 @@ export function LoginPage() {
     ? 'Belum punya akun organizer?'
     : 'Belum punya akun relawan?'
   const canRegister = !nextHref.startsWith('/portal/')
-  const isSubmitting = status === 'loading'
+  const isSubmitting = status === 'loading' || isRedirecting
 
   useEffect(() => {
     if (status === 'idle') {
@@ -33,29 +35,36 @@ export function LoginPage() {
   }, [refresh, status])
 
   useEffect(() => {
-    if (status === 'authenticated' && user) {
+    if (status === 'authenticated' && user && !isRedirecting) {
       navigate(isNextAllowedForRole(nextHref, user.role) ? nextHref : getRoleHome(user.role), {
         replace: true,
       })
     }
-  }, [navigate, nextHref, status, user])
+  }, [isRedirecting, navigate, nextHref, status, user])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError(null)
+    setIsRedirecting(true)
 
     try {
-      const user = await login({ email, password })
+      const [user] = await Promise.all([login({ email, password }), wait(650)])
       navigate(isNextAllowedForRole(nextHref, user.role) ? nextHref : getRoleHome(user.role), {
         replace: true,
       })
     } catch (error) {
       setLoginError(getErrorMessage(error))
+      setIsRedirecting(false)
     }
   }
 
   return (
     <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-5xl items-center py-6 sm:py-8">
+      <LoadingModal
+        open={isSubmitting}
+        title="Memeriksa akun"
+        description="Kami sedang memvalidasi akses dan menyiapkan dashboard yang sesuai."
+      />
       <section className="grid w-full min-w-0 gap-6 lg:grid-cols-[1fr_1fr]">
         <div className="min-w-0 rounded-lg border bg-deep-green p-6 text-primary-foreground shadow-sm sm:p-8">
           <span className="flex size-14 items-center justify-center rounded-md bg-secondary font-heading text-2xl font-extrabold text-secondary-foreground">
@@ -210,4 +219,10 @@ function getErrorMessage(error: unknown) {
   }
 
   return 'Login gagal. Periksa email dan password.'
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
 }

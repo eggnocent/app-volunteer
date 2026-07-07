@@ -10,6 +10,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
+import { LoadingModal } from '@/components'
 import { categories } from '@/data'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/providers/useAuth'
@@ -52,6 +53,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
   const [searchParams] = useSearchParams()
   const { register, status, user } = useAuth()
   const [stage, setStage] = useState<'form' | 'onboarding' | 'success'>('form')
+  const [isPreparingNextStep, setIsPreparingNextStep] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
   const [pendingPayload, setPendingPayload] =
@@ -91,7 +93,7 @@ export function RegisterPage({ role }: RegisterPageProps) {
     return <Navigate to={getRoleHome(user.role)} replace />
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setRegisterError(null)
     const formData = new FormData(event.currentTarget)
@@ -119,6 +121,10 @@ export function RegisterPage({ role }: RegisterPageProps) {
         : undefined,
       university: isOrganizer ? undefined : getFormString(formData, 'university'),
     })
+
+    setIsPreparingNextStep(true)
+    await wait(650)
+    setIsPreparingNextStep(false)
     setStage('onboarding')
   }
 
@@ -185,6 +191,11 @@ export function RegisterPage({ role }: RegisterPageProps) {
   if (stage === 'onboarding') {
     return (
       <StageTransition stage={stage}>
+        <LoadingModal
+          open={isSaving || status === 'loading'}
+          title="Menyiapkan akun"
+          description="Kami sedang menyimpan preferensi dan menyiapkan dashboard pertamamu."
+        />
         <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-5xl items-center py-8">
           <section className="w-full rounded-lg border bg-card p-8 shadow-sm">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
@@ -339,6 +350,11 @@ export function RegisterPage({ role }: RegisterPageProps) {
 
   return (
     <StageTransition stage={stage}>
+      <LoadingModal
+        open={isPreparingNextStep}
+        title={isOrganizer ? 'Menyiapkan onboarding organizer' : 'Menyiapkan onboarding relawan'}
+        description="Sebentar, kami sedang menyiapkan langkah berikutnya agar transisi halaman tetap jelas."
+      />
       <div className="mx-auto flex min-h-[calc(100svh-6rem)] max-w-6xl items-center py-8">
         <section className="grid w-full min-w-0 gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="min-w-0 rounded-lg border bg-deep-green p-6 text-primary-foreground shadow-sm sm:p-8">
@@ -492,10 +508,17 @@ export function RegisterPage({ role }: RegisterPageProps) {
 
             <button
               type="submit"
-              className="mt-8 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green"
+              disabled={isPreparingNextStep}
+              className="mt-8 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isOrganizer ? 'Daftar sebagai Organizer' : 'Daftar sebagai Relawan'}
-              <ArrowRight size={17} />
+              {isPreparingNextStep ? (
+                'Menyiapkan...'
+              ) : (
+                <>
+                  {isOrganizer ? 'Daftar sebagai Organizer' : 'Daftar sebagai Relawan'}
+                  <ArrowRight size={17} />
+                </>
+              )}
             </button>
 
             <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">
