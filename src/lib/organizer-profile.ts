@@ -17,7 +17,9 @@ export function getSessionOrganizerId(user?: ApiUser | null) {
 }
 
 export function getSessionOrganizer(user?: ApiUser | null) {
-  return user?.organizer ?? user?.organization ?? user?.organizers?.[0]
+  return unwrapOrganizer(user?.organizer) ??
+    unwrapOrganizer(user?.organization) ??
+    unwrapOrganizer(user?.organizers)
 }
 
 export function createOrganizerFallback(user?: ApiUser | null): Organizer {
@@ -85,4 +87,20 @@ function toBoolean(value: unknown) {
   }
 
   return false
+}
+
+function unwrapOrganizer(value: unknown): ApiOrganizer | Organizer | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  if (Array.isArray(value)) {
+    return unwrapOrganizer(value[0])
+  }
+
+  if (typeof value === 'object' && 'data' in value) {
+    return unwrapOrganizer((value as { data?: unknown }).data)
+  }
+
+  return value as ApiOrganizer | Organizer
 }
