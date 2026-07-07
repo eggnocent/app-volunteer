@@ -23,7 +23,10 @@ import {
 } from '@/components'
 import { getEventById, getOrganizerById } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
-import { getVolunteerRoleLabel } from '@/lib/display-labels'
+import {
+  getApplicationStatusLabel,
+  getVolunteerRoleLabel,
+} from '@/lib/display-labels'
 import { formatDate, formatEventTime } from '@/lib/format'
 import {
   getClosedEventMessage,
@@ -36,8 +39,18 @@ import {
 } from '@/lib/volunteer-profile'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
 import { useAuth } from '@/providers/useAuth'
-import { mapEvent, mapOrganizer, publicApi, volunteerApi } from '@/services/api'
-import type { VolunteerProfile, VolunteerRole } from '@/types/migunani'
+import {
+  mapApplication,
+  mapEvent,
+  mapOrganizer,
+  publicApi,
+  volunteerApi,
+} from '@/services/api'
+import type {
+  VolunteerApplication,
+  VolunteerProfile,
+  VolunteerRole,
+} from '@/types/migunani'
 
 const registrationSteps: RegistrationStep[] = [
   {
@@ -83,6 +96,7 @@ export function ApplyPage() {
     ? {
         event: fallbackEvent,
         organizer: getOrganizerById(fallbackEvent.organizerId),
+        volunteerApplication: undefined,
       }
     : undefined
   const loadEvent = useCallback(async () => {
@@ -95,6 +109,9 @@ export function ApplyPage() {
     return {
       event: mapEvent(apiEvent),
       organizer: apiEvent.organizer ? mapOrganizer(apiEvent.organizer) : undefined,
+      volunteerApplication: apiEvent.myApplication
+        ? mapApplication(apiEvent.myApplication)
+        : undefined,
     }
   }, [eventId])
   const { data: eventResource, error: eventError, isLoading } = useAsyncResource(
@@ -102,6 +119,7 @@ export function ApplyPage() {
     fallbackResource,
   )
   const event = eventResource?.event
+  const volunteerApplication = eventResource?.volunteerApplication
   const loadProfile = useCallback(async () => {
     return normalizeVolunteerProfile(await volunteerApi.getProfile(), fallbackProfile)
   }, [fallbackProfile])
@@ -202,6 +220,16 @@ export function ApplyPage() {
     )
   }
 
+  if (volunteerApplication) {
+    return (
+      <PagePlaceholder
+        eyebrow="Sudah terdaftar"
+        title="Kamu sudah punya aplikasi untuk event ini."
+        description={`Status aplikasimu saat ini: ${getApplicationStatusLabel(volunteerApplication.status)}.`}
+      />
+    )
+  }
+
   function toggleAvailability(option: string) {
     setAvailability((current) =>
       current.includes(option)
@@ -217,8 +245,17 @@ export function ApplyPage() {
       return
     }
 
-    if (!event || !selectedRole || !isEventOpenForRegistration(event)) {
-      setSubmitError(getClosedEventMessage(event))
+    if (
+      !event ||
+      !selectedRole ||
+      !isEventOpenForRegistration(event) ||
+      volunteerApplication
+    ) {
+      setSubmitError(
+        volunteerApplication
+          ? getDuplicateApplicationMessage(volunteerApplication)
+          : getClosedEventMessage(event),
+      )
       return
     }
 
@@ -424,6 +461,10 @@ function getErrorMessage(error: unknown) {
   }
 
   return 'Aplikasi belum bisa dikirim.'
+}
+
+function getDuplicateApplicationMessage(application: VolunteerApplication) {
+  return `Kamu sudah terdaftar untuk event ini dengan status ${getApplicationStatusLabel(application.status)}.`
 }
 
 function RoleStep({

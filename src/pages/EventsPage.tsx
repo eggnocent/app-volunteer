@@ -6,6 +6,7 @@ import { events, getOrganizerById } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getEventMatch } from '@/lib/match'
 import { isEventOpenForRegistration } from '@/lib/event-availability'
+import { getApplicationStatusLabel } from '@/lib/display-labels'
 import {
   createVolunteerProfileFallback,
   normalizeVolunteerProfile,
@@ -24,6 +25,7 @@ import type {
   EventMode,
   UserRole,
   Organizer,
+  ApplicationStatus,
   VolunteerEvent,
   VolunteerProfile,
 } from '@/types/migunani'
@@ -39,6 +41,7 @@ type SortOption = 'relevant' | 'newest' | 'remaining' | 'match'
 type EventsResource = {
   events: VolunteerEvent[]
   organizers: Record<string, Organizer>
+  applications: Record<string, ApplicationStatus>
   savedEventIds: string[]
   profile: VolunteerProfile
 }
@@ -65,6 +68,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
     () => ({
       events: viewer === 'organizer' && !organizerId ? [] : events,
       organizers: {},
+      applications: {},
       savedEventIds: fallbackProfile.savedEventIds,
       profile: fallbackProfile,
     }),
@@ -85,6 +89,11 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
         .filter((event) => event.organizer)
         .map((event) => [event.id, mapOrganizer(event.organizer!)]),
     )
+    const mappedApplications = Object.fromEntries(
+      apiEvents
+        .filter((event) => event.myApplication)
+        .map((event) => [event.id, event.myApplication!.status]),
+    )
 
     if (isVolunteerContext) {
       const [profileResult, savedEventsResult] = await Promise.allSettled([
@@ -103,6 +112,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
       return {
         events: mappedEvents,
         organizers: mappedOrganizers,
+        applications: mappedApplications,
         savedEventIds,
         profile,
       }
@@ -111,6 +121,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
     return {
       events: mappedEvents,
       organizers: mappedOrganizers,
+      applications: mappedApplications,
       savedEventIds: mappedEvents
         .filter((event) => 'isSaved' in event && Boolean(event.isSaved))
         .map((event) => event.id),
@@ -283,6 +294,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
               primaryAction={getEventCardAction(
                 actionContext,
                 event,
+                resource.applications[event.id],
                 viewer === 'organizer',
               )}
               {...(isVolunteerContext
@@ -306,6 +318,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 function getEventCardAction(
   context: EventActionContext,
   event: VolunteerEvent,
+  applicationStatus: ApplicationStatus | undefined,
   canEditSpecificEvent: boolean,
 ) {
   if (context === 'admin') {
@@ -330,6 +343,13 @@ function getEventCardAction(
   }
 
   if (context === 'volunteer') {
+    if (applicationStatus) {
+      return {
+        label: `Aplikasi ${getApplicationStatusLabel(applicationStatus)}`,
+        to: '/volunteer/dashboard?tab=applications',
+      }
+    }
+
     if (!isEventOpenForRegistration(event)) {
       return undefined
     }
