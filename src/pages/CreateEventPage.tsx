@@ -228,8 +228,20 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
     setPublishError(null)
 
     try {
+      const selectedCategory = categories.find(
+        (item) => item.name === previewEvent.category,
+      )
+
+      if (!selectedCategory) {
+        setPublishError('Kategori event belum valid. Pilih kategori lain lalu coba simpan lagi.')
+        setIsSavingEvent(false)
+        return
+      }
+
       const payload = {
         title: previewEvent.title,
+        categoryId: selectedCategory.id,
+        category_id: selectedCategory.id,
         category: previewEvent.category,
         mode: previewEvent.mode,
         city: previewEvent.city,

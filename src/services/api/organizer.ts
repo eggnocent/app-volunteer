@@ -16,6 +16,8 @@ import type {
 
 export type OrganizerEventPayload = {
   title: string
+  categoryId: string
+  category_id: string
   category: EventCategory
   mode: EventMode
   city: string
