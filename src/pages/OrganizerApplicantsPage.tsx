@@ -133,6 +133,13 @@ export function OrganizerApplicantsPage() {
       return
     }
 
+    const application = applications.find((item) => item.id === applicationId)
+    const event = application
+      ? resource.events.find((item) => item.id === application.eventId) ??
+        getEventById(application.eventId)
+      : undefined
+    const hours = Math.max(event?.durationHours ?? 1, 1)
+
     setActionError(null)
     setPendingApplicationIds((current) =>
       current.includes(applicationId) ? current : [...current, applicationId],
@@ -142,7 +149,7 @@ export function OrganizerApplicantsPage() {
     )
 
     try {
-      await organizerApi.issueCertificate(organizerId, applicationId)
+      await organizerApi.issueCertificate(organizerId, applicationId, { hours })
       void reload()
     } catch (error) {
       setIssuedCertificateIds((current) =>

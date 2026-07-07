@@ -152,12 +152,17 @@ export async function getOrganizerCertificate(
   )
 }
 
-export async function issueCertificate(organizerId: string, applicationId: string) {
+export async function issueCertificate(
+  organizerId: string,
+  applicationId: string,
+  payload: { hours: number },
+) {
   return unwrapData(
     await apiRequest<ApiEnvelope<ApiCertificate>>(
       `/api/organizers/${organizerId}/applications/${applicationId}/certificate`,
       {
         method: 'POST',
+        body: payload,
       },
     ),
   )
