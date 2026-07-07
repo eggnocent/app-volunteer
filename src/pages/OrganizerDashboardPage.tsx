@@ -33,7 +33,11 @@ import {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate, getFillPercentage } from '@/lib/format'
-import { createOrganizerFallback, getSessionOrganizerId } from '@/lib/organizer-profile'
+import {
+  createOrganizerFallback,
+  getSessionOrganizer,
+  getSessionOrganizerId,
+} from '@/lib/organizer-profile'
 import { mapApplication, mapEvent, mapOrganizer, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
 import type { ApiApplication } from '@/services/api'
@@ -54,7 +58,7 @@ export function OrganizerDashboardPage() {
   const organizerId = getSessionOrganizerId(user)
   const hasOrganizerId = Boolean(organizerId)
   const localOrganizer = organizerId ? getOrganizerById(organizerId) : undefined
-  const fallbackOrganizer = user?.organizer ?? localOrganizer ?? createOrganizerFallback(user)
+  const fallbackOrganizer = getSessionOrganizer(user) ?? localOrganizer ?? createOrganizerFallback(user)
   const fallbackResource = useMemo(
     () => {
       const fallbackEvents = localOrganizer ? getOrganizerEvents(localOrganizer.id) : []

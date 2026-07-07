@@ -11,11 +11,17 @@ type OrganizerVerificationSource = Partial<Organizer> & {
 }
 
 export function getSessionOrganizerId(user?: ApiUser | null) {
-  return user?.organizerId ?? user?.organizer?.id
+  return user?.organizerId ??
+    user?.organizer_id ??
+    getSessionOrganizer(user)?.id
+}
+
+export function getSessionOrganizer(user?: ApiUser | null) {
+  return user?.organizer ?? user?.organization ?? user?.organizers?.[0]
 }
 
 export function createOrganizerFallback(user?: ApiUser | null): Organizer {
-  const organizer = user?.organizer
+  const organizer = getSessionOrganizer(user)
 
   return {
     id: getSessionOrganizerId(user) ?? 'organizer-pending',

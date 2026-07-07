@@ -67,7 +67,10 @@ export type ApiUser = {
   joinedAt?: string
   avatarInitials?: string
   organizerId?: string
-  organizer?: Organizer | null
+  organizer_id?: string
+  organizer?: ApiOrganizer | Organizer | null
+  organization?: ApiOrganizer | Organizer | null
+  organizers?: ApiOrganizer[]
 }
 
 export type ApiAuthResponse = {
