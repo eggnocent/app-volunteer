@@ -17,6 +17,7 @@ import type {
   ApiOrganizer,
   ApiVolunteerDashboard,
 } from '@/services/api/types'
+import { getOrganizerVerified } from '@/lib/organizer-profile'
 
 export function unwrapData<T>(payload: { data: T } | T): T {
   if (isObject(payload) && 'data' in payload) {
@@ -39,14 +40,14 @@ export function mapCategory(category: ApiCategory): Category {
 export function mapOrganizer(organizer: ApiOrganizer): Organizer {
   return {
     id: organizer.id,
-    name: organizer.name,
-    type: organizer.type,
-    city: organizer.city,
-    verified: organizer.verified,
-    logoInitial: organizer.logoInitial,
-    rating: organizer.rating,
-    totalEvents: organizer.totalEvents,
-    responseTime: organizer.responseTime,
+    name: organizer.name ?? 'Organizer Migunani',
+    type: organizer.type ?? 'Organizer',
+    city: organizer.city ?? 'Belum diisi',
+    verified: getOrganizerVerified(organizer),
+    logoInitial: organizer.logoInitial ?? organizer.logo_initial ?? getInitial(organizer.name),
+    rating: organizer.rating ?? 0,
+    totalEvents: organizer.totalEvents ?? organizer.total_events ?? 0,
+    responseTime: organizer.responseTime ?? organizer.response_time ?? 'baru',
   }
 }
 
@@ -158,4 +159,10 @@ export async function withApiFallback<T>(
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function getInitial(name?: string) {
+  const initial = name?.trim().charAt(0).toUpperCase()
+
+  return initial || 'O'
 }

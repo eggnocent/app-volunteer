@@ -100,7 +100,27 @@ export type ApiCategory = {
   bgColor: string
 }
 
-export type ApiOrganizer = Organizer
+export type ApiBooleanLike = boolean | number | string | null | undefined
+
+export type ApiOrganizer = Partial<Organizer> & {
+  id: string
+  name?: string
+  type?: string
+  city?: string
+  verified?: ApiBooleanLike
+  isVerified?: ApiBooleanLike
+  is_verified?: ApiBooleanLike
+  verifiedAt?: string | null
+  verified_at?: string | null
+  verificationStatus?: string | null
+  verification_status?: string | null
+  logoInitial?: string
+  logo_initial?: string
+  totalEvents?: number
+  total_events?: number
+  responseTime?: string
+  response_time?: string
+}
 
 export type ApiEvent = Omit<VolunteerEvent, 'category'> & {
   categoryId?: string
