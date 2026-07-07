@@ -32,7 +32,7 @@ import {
 } from '@/lib/volunteer-profile'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
 import { useAuth } from '@/providers/useAuth'
-import { mapEvent, publicApi, volunteerApi } from '@/services/api'
+import { mapEvent, mapOrganizer, publicApi, volunteerApi } from '@/services/api'
 import type { VolunteerProfile, VolunteerRole } from '@/types/migunani'
 
 const registrationSteps: RegistrationStep[] = [
@@ -75,22 +75,35 @@ export function ApplyPage() {
     [user],
   )
   const fallbackEvent = eventId ? getEventById(eventId) : undefined
+  const fallbackResource = fallbackEvent
+    ? {
+        event: fallbackEvent,
+        organizer: getOrganizerById(fallbackEvent.organizerId),
+      }
+    : undefined
   const loadEvent = useCallback(async () => {
     if (!eventId) {
       return undefined
     }
 
-    return mapEvent(await publicApi.getEvent(eventId))
+    const apiEvent = await publicApi.getEvent(eventId)
+
+    return {
+      event: mapEvent(apiEvent),
+      organizer: apiEvent.organizer ? mapOrganizer(apiEvent.organizer) : undefined,
+    }
   }, [eventId])
-  const { data: event, error: eventError, isLoading } = useAsyncResource(
+  const { data: eventResource, error: eventError, isLoading } = useAsyncResource(
     loadEvent,
-    fallbackEvent,
+    fallbackResource,
   )
+  const event = eventResource?.event
   const loadProfile = useCallback(async () => {
     return normalizeVolunteerProfile(await volunteerApi.getProfile(), fallbackProfile)
   }, [fallbackProfile])
   const { data: profile } = useAsyncResource(loadProfile, fallbackProfile)
-  const organizer = event ? getOrganizerById(event.organizerId) : undefined
+  const organizer = eventResource?.organizer ??
+    (event ? getOrganizerById(event.organizerId) : undefined)
   const [currentStep, setCurrentStep] = useState(0)
   const [stepDirection, setStepDirection] = useState(1)
   const [selectedRole, setSelectedRole] = useState<VolunteerRole | ''>(

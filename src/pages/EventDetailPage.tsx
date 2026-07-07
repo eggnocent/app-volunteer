@@ -34,7 +34,13 @@ import {
 import { formatDate, formatEventTime } from '@/lib/format'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
 import { useAuth } from '@/providers/useAuth'
-import { mapApplication, mapEvent, publicApi, volunteerApi } from '@/services/api'
+import {
+  mapApplication,
+  mapEvent,
+  mapOrganizer,
+  publicApi,
+  volunteerApi,
+} from '@/services/api'
 import type { ApplicationStatus, Organizer, UserRole, VolunteerEvent } from '@/types/migunani'
 
 type EventDetailPageProps = {
@@ -54,7 +60,9 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
       fallbackEvent
         ? {
             event: fallbackEvent,
+            organizer: getOrganizerById(fallbackEvent.organizerId),
             relatedEvents: getRelatedEvents(fallbackEvent.id),
+            relatedOrganizers: {},
             volunteerApplication: undefined,
             isSaved: false,
           }
@@ -70,7 +78,16 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
 
     return {
       event: mapEvent(apiEvent),
+      organizer: apiEvent.organizer ? mapOrganizer(apiEvent.organizer) : undefined,
       relatedEvents: (apiEvent.relatedEvents ?? []).map(mapEvent),
+      relatedOrganizers: Object.fromEntries(
+        (apiEvent.relatedEvents ?? [])
+          .filter((relatedEvent) => relatedEvent.organizer)
+          .map((relatedEvent) => [
+            relatedEvent.id,
+            mapOrganizer(relatedEvent.organizer!),
+          ]),
+      ),
       volunteerApplication: apiEvent.myApplication
         ? mapApplication(apiEvent.myApplication)
         : undefined,
@@ -83,7 +100,8 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
   )
   const [savedOverride, setSavedOverride] = useState<boolean | null>(null)
   const event = detailResource?.event
-  const organizer = event ? getOrganizerById(event.organizerId) : undefined
+  const organizer = detailResource?.organizer ??
+    (event ? getOrganizerById(event.organizerId) : undefined)
 
   if (!event) {
     if (isLoading) {
@@ -330,7 +348,10 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
               <EventCard
                 key={relatedEvent.id}
                 event={relatedEvent}
-                organizer={getOrganizerById(relatedEvent.organizerId)}
+                organizer={
+                  detailResource.relatedOrganizers[relatedEvent.id] ??
+                  getOrganizerById(relatedEvent.organizerId)
+                }
                 detailPathPrefix={relatedDetailPathPrefix}
                 variant="compact"
                 primaryAction={getRelatedEventAction(

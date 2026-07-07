@@ -10,12 +10,19 @@ import {
   normalizeVolunteerProfile,
 } from '@/lib/volunteer-profile'
 import { getSessionOrganizerId } from '@/lib/organizer-profile'
-import { mapEvent, organizerApi, publicApi, volunteerApi } from '@/services/api'
+import {
+  mapEvent,
+  mapOrganizer,
+  organizerApi,
+  publicApi,
+  volunteerApi,
+} from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
 import type {
   EventCategory,
   EventMode,
   UserRole,
+  Organizer,
   VolunteerEvent,
   VolunteerProfile,
 } from '@/types/migunani'
@@ -30,6 +37,7 @@ type SortOption = 'relevant' | 'newest' | 'remaining' | 'match'
 
 type EventsResource = {
   events: VolunteerEvent[]
+  organizers: Record<string, Organizer>
   savedEventIds: string[]
   profile: VolunteerProfile
 }
@@ -55,6 +63,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   const initialResource = useMemo<EventsResource>(
     () => ({
       events: viewer === 'organizer' && !organizerId ? [] : events,
+      organizers: {},
       savedEventIds: fallbackProfile.savedEventIds,
       profile: fallbackProfile,
     }),
@@ -70,6 +79,11 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
         ? await organizerApi.getOrganizerEvents(organizerId)
         : await publicApi.getEvents()
     const mappedEvents = apiEvents.map(mapEvent)
+    const mappedOrganizers = Object.fromEntries(
+      apiEvents
+        .filter((event) => event.organizer)
+        .map((event) => [event.id, mapOrganizer(event.organizer!)]),
+    )
 
     if (isVolunteerContext) {
       const [profileResult, savedEventsResult] = await Promise.allSettled([
@@ -87,6 +101,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 
       return {
         events: mappedEvents,
+        organizers: mappedOrganizers,
         savedEventIds,
         profile,
       }
@@ -94,6 +109,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 
     return {
       events: mappedEvents,
+      organizers: mappedOrganizers,
       savedEventIds: mappedEvents
         .filter((event) => 'isSaved' in event && Boolean(event.isSaved))
         .map((event) => event.id),
@@ -119,7 +135,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
     const query = search.trim().toLowerCase()
 
     return resource.events.filter((event) => {
-      const organizer = getOrganizerById(event.organizerId)
+      const organizer = resource.organizers[event.id] ?? getOrganizerById(event.organizerId)
       const matchesSearch =
         query.length === 0 ||
         [
@@ -142,7 +158,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 
       return matchesSearch && matchesCategory && matchesMode
     })
-  }, [resource.events, search, selectedCategory, selectedMode])
+  }, [resource.events, resource.organizers, search, selectedCategory, selectedMode])
 
   const sortedEvents = useMemo(() => {
     return [...filteredEvents].sort((a, b) => {
@@ -243,7 +259,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
             <EventCard
               key={event.id}
               event={event}
-              organizer={getOrganizerById(event.organizerId)}
+              organizer={resource.organizers[event.id] ?? getOrganizerById(event.organizerId)}
               saved={isEventSaved(event.id, resource.savedEventIds, savedOverrides)}
               onSavedChange={isVolunteerContext ? toggleSaved : undefined}
               detailPathPrefix={detailPathPrefix}
