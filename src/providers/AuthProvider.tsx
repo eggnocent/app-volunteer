@@ -37,9 +37,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const response = await authApi.login(payload)
-      setUser(response.user)
+      const currentUser = await authApi.me().catch(() => response.user)
+
+      setUser(currentUser)
       setStatus('authenticated')
-      return response.user
+      return currentUser
     } catch (loginError) {
       setUser(null)
       setStatus('error')
@@ -54,9 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const response = await authApi.register(payload)
-      setUser(response.user)
+      const currentUser = await authApi.me().catch(() => response.user)
+
+      setUser(currentUser)
       setStatus('authenticated')
-      return response.user
+      return currentUser
     } catch (registerError) {
       setUser(null)
       setStatus('error')

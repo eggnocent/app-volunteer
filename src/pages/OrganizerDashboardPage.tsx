@@ -34,6 +34,7 @@ import {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate, getFillPercentage } from '@/lib/format'
+import { createOrganizerFallback } from '@/lib/organizer-profile'
 import { mapApplication, mapEvent, mapOrganizer, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
 import type { ApiApplication } from '@/services/api'
@@ -51,20 +52,32 @@ const demandCategories: EventCategory[] = [
 
 export function OrganizerDashboardPage() {
   const { user } = useAuth()
-  const fallbackOrganizer = getOrganizerById(activeOrganizerId) ?? organizers[0]
-  const fallbackEvents = getOrganizerEvents(fallbackOrganizer.id)
+  const hasOrganizerId = Boolean(user?.organizerId)
+  const fallbackOrganizer = hasOrganizerId
+    ? getOrganizerById(activeOrganizerId) ?? organizers[0]
+    : createOrganizerFallback(user)
   const fallbackResource = useMemo(
-    () => ({
-      organizer: fallbackOrganizer,
-      events: fallbackEvents.length > 0 ? fallbackEvents : events.slice(0, 4),
-      applications: volunteerApplications,
-      applicantIdentities: getFallbackApplicantIdentities(volunteerApplications),
-      metrics: organizerMetrics,
-    }),
-    [fallbackEvents, fallbackOrganizer],
+    () => {
+      const fallbackEvents = hasOrganizerId ? getOrganizerEvents(fallbackOrganizer.id) : []
+
+      return {
+        organizer: fallbackOrganizer,
+        events: fallbackEvents.length > 0 ? fallbackEvents : hasOrganizerId ? events.slice(0, 4) : [],
+        applications: hasOrganizerId ? volunteerApplications : [],
+        applicantIdentities: hasOrganizerId
+          ? getFallbackApplicantIdentities(volunteerApplications)
+          : {},
+        metrics: hasOrganizerId ? organizerMetrics : getEmptyOrganizerMetrics(),
+      }
+    },
+    [fallbackOrganizer, hasOrganizerId],
   )
-  const organizerId = user?.organizerId ?? fallbackOrganizer.id
+  const organizerId = user?.organizerId
   const loadDashboard = useCallback(async () => {
+    if (!organizerId) {
+      return fallbackResource
+    }
+
     const dashboard = await organizerApi.getOrganizerDashboard(organizerId)
 
     return {
@@ -74,7 +87,7 @@ export function OrganizerDashboardPage() {
       applicantIdentities: getApplicantIdentities(dashboard.applications),
       metrics: dashboard.metrics ?? organizerMetrics,
     }
-  }, [organizerId])
+  }, [fallbackResource, organizerId])
   const {
     data: resource,
     error: dashboardError,
@@ -315,6 +328,19 @@ function ApiNotice({
       {message}
     </div>
   )
+}
+
+function getEmptyOrganizerMetrics() {
+  return organizerMetrics.map((metric) => ({
+    ...metric,
+    value: '0',
+    helper:
+      metric.id === 'response'
+        ? 'belum ada pendaftar'
+        : metric.id === 'growth'
+          ? 'mulai dari event pertama'
+          : 'belum ada data',
+  }))
 }
 
 function getApplicantIdentities(applications: ApiApplication[]) {

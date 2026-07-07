@@ -19,6 +19,7 @@ import {
   getVolunteerRoleLabel,
   volunteerRoleOptions,
 } from '@/lib/display-labels'
+import { createOrganizerFallback } from '@/lib/organizer-profile'
 import { cn } from '@/lib/utils'
 import { mapEvent, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
@@ -26,7 +27,6 @@ import type { EventCategory, EventMode, VolunteerEvent, VolunteerRole } from '@/
 
 const previewImage =
   'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1200&q=80'
-const fallbackOrganizerId = 'org-aksara-muda'
 
 type CreateEventPageProps = {
   pageMode?: 'create' | 'edit'
@@ -36,6 +36,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
   const { user } = useAuth()
   const { eventId } = useParams()
   const isEditMode = pageMode === 'edit'
+  const organizerId = user?.organizerId
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<EventCategory>('Pendidikan')
   const [mode, setMode] = useState<EventMode>('Offline')
@@ -65,7 +66,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
       slug: 'preview-event',
       title: title || 'Judul event akan tampil di sini',
       category,
-      organizerId: fallbackOrganizerId,
+      organizerId: organizerId ?? 'organizer-pending',
       location: location || 'Lokasi kegiatan',
       city: city || 'Kota',
       mode,
@@ -96,6 +97,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
     endTime,
     location,
     mode,
+    organizerId,
     quota,
     selectedRoles,
     skills,
@@ -103,7 +105,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
     title,
   ])
 
-  const organizer = getOrganizerById(previewEvent.organizerId)
+  const organizer = getOrganizerById(previewEvent.organizerId) ?? createOrganizerFallback(user)
   const validationErrors = useMemo(
     () =>
       validateEventForm({
@@ -141,10 +143,15 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
     }
 
     let cancelled = false
-    const organizerId = user?.organizerId ?? fallbackOrganizerId
     const targetEventId = eventId
 
     async function loadEventForEdit() {
+      if (!organizerId) {
+        setLoadError('Profil organizer belum siap. Coba muat ulang akun organizer.')
+        setIsLoadingEvent(false)
+        return
+      }
+
       setIsLoadingEvent(true)
       setLoadError(null)
 
@@ -185,7 +192,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
     return () => {
       cancelled = true
     }
-  }, [eventId, isEditMode, user?.organizerId])
+  }, [eventId, isEditMode, organizerId])
 
   function toggleRole(role: VolunteerRole) {
     markFormEdited()
@@ -212,7 +219,11 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
       return
     }
 
-    const organizerId = user?.organizerId ?? fallbackOrganizerId
+    if (!organizerId) {
+      setPublishError('Profil organizer belum siap. Coba logout lalu masuk kembali sebelum membuat event.')
+      return
+    }
+
     setIsSavingEvent(true)
     setPublishError(null)
 

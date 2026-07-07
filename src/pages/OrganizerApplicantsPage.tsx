@@ -14,7 +14,6 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { CategoryChip, ConfirmDialog, Dialog, PageHeader, StatsCard, StatusBadge } from '@/components'
 import {
   getEventById,
-  getOrganizerById,
   platformUsers,
   volunteerApplications as initialApplications,
   volunteerProfile,
@@ -27,8 +26,6 @@ import { useAuth } from '@/providers/useAuth'
 import type { ApiApplication, ApiEvent } from '@/services/api'
 import type { ApplicationStatus, VolunteerApplication, VolunteerEvent } from '@/types/migunani'
 
-const fallbackOrganizerId = 'org-aksara-muda'
-
 type ApplicantIdentity = {
   name: string
   profileLine: string
@@ -39,18 +36,26 @@ export function OrganizerApplicantsPage() {
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const focusedEventId = searchParams.get('event')
-  const organizerId = user?.organizerId ?? getOrganizerById(fallbackOrganizerId)?.id ?? fallbackOrganizerId
+  const organizerId = user?.organizerId
   const fallbackResource = useMemo(
     () => ({
-      applications: initialApplications,
-      events: initialApplications
-        .map((application) => getEventById(application.eventId))
-        .filter((event): event is VolunteerEvent => Boolean(event)),
-      applicantIdentities: getFallbackApplicantIdentities(initialApplications),
+      applications: organizerId ? initialApplications : [],
+      events: organizerId
+        ? initialApplications
+            .map((application) => getEventById(application.eventId))
+            .filter((event): event is VolunteerEvent => Boolean(event))
+        : [],
+      applicantIdentities: organizerId
+        ? getFallbackApplicantIdentities(initialApplications)
+        : {},
     }),
-    [],
+    [organizerId],
   )
   const loadApplications = useCallback(async () => {
+    if (!organizerId) {
+      return fallbackResource
+    }
+
     const apiApplications = await organizerApi.getOrganizerApplications(organizerId)
     const mappedApplications = apiApplications.map(mapApplication)
     const apiEvents = apiApplications
@@ -63,7 +68,7 @@ export function OrganizerApplicantsPage() {
       events: dedupeEvents([...fallbackResource.events, ...apiEvents]),
       applicantIdentities: getApplicantIdentities(apiApplications, mappedApplications),
     }
-  }, [fallbackResource.events, organizerId])
+  }, [fallbackResource, organizerId])
   const {
     data: resource,
     error: applicantsError,
@@ -95,6 +100,11 @@ export function OrganizerApplicantsPage() {
   }
 
   const handleCheckIn = async (applicationId: string) => {
+    if (!organizerId) {
+      setActionError('Profil organizer belum siap. Coba muat ulang akun organizer.')
+      return
+    }
+
     setActionError(null)
     setPendingApplicationIds((current) =>
       current.includes(applicationId) ? current : [...current, applicationId],
@@ -118,6 +128,11 @@ export function OrganizerApplicantsPage() {
   }
 
   async function handleIssueCertificate(applicationId: string) {
+    if (!organizerId) {
+      setActionError('Profil organizer belum siap. Coba muat ulang akun organizer.')
+      return
+    }
+
     setActionError(null)
     setPendingApplicationIds((current) =>
       current.includes(applicationId) ? current : [...current, applicationId],
@@ -143,6 +158,11 @@ export function OrganizerApplicantsPage() {
     applicationId: string,
     status: ApplicationStatus,
   ) {
+    if (!organizerId) {
+      setActionError('Profil organizer belum siap. Coba muat ulang akun organizer.')
+      return
+    }
+
     const previousApplications = applications
     setActionError(null)
     setPendingApplicationIds((current) =>
@@ -463,7 +483,7 @@ export function OrganizerApplicantsPage() {
         </div>
       </section>
 
-      {selectedApplication && (
+      {selectedApplication && organizerId ? (
         <ApplicantDetailModal
           application={selectedApplication}
           event={selectedEvent}
@@ -478,7 +498,7 @@ export function OrganizerApplicantsPage() {
           onIssueCertificate={() => void handleIssueCertificate(selectedApplication.id)}
           certificateIssued={issuedCertificateIds.includes(selectedApplication.id)}
         />
-      )}
+      ) : null}
 
       {rejectApplication ? (
         <ConfirmDialog

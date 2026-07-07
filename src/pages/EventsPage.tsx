@@ -52,14 +52,18 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
   )
   const initialResource = useMemo<EventsResource>(
     () => ({
-      events,
+      events: viewer === 'organizer' && !user?.organizerId ? [] : events,
       savedEventIds: fallbackProfile.savedEventIds,
       profile: fallbackProfile,
     }),
-    [fallbackProfile],
+    [fallbackProfile, user?.organizerId, viewer],
   )
   const organizerId = user?.organizerId
   const loadEvents = useCallback(async () => {
+    if (viewer === 'organizer' && !organizerId) {
+      return initialResource
+    }
+
     const apiEvents =
       viewer === 'organizer' && organizerId
         ? await organizerApi.getOrganizerEvents(organizerId)
@@ -94,7 +98,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
         .map((event) => event.id),
       profile: fallbackProfile,
     }
-  }, [fallbackProfile, isVolunteerContext, organizerId, viewer])
+  }, [fallbackProfile, initialResource, isVolunteerContext, organizerId, viewer])
   const {
     data: resource,
     error: resourceError,

@@ -23,8 +23,12 @@ const fallbackOrganizerId = 'org-aksara-muda'
 
 export function OrganizerCertificatesPage() {
   const { user } = useAuth()
-  const organizerId = user?.organizerId ?? fallbackOrganizerId
+  const organizerId = user?.organizerId
   const fallbackCertificates = useMemo<ApiCertificate[]>(() => {
+    if (!organizerId) {
+      return []
+    }
+
     const volunteerUsers = platformUsers.filter(
       (platformUser) => platformUser.role === 'volunteer',
     )
@@ -42,10 +46,13 @@ export function OrganizerCertificatesPage() {
           getOrganizerById(fallbackOrganizerId)?.name ?? 'Organizer Migunani',
       }
     })
-  }, [])
+  }, [organizerId])
   const loadCertificates = useCallback(
-    () => organizerApi.getOrganizerCertificates(organizerId),
-    [organizerId],
+    () =>
+      organizerId
+        ? organizerApi.getOrganizerCertificates(organizerId)
+        : Promise.resolve(fallbackCertificates),
+    [fallbackCertificates, organizerId],
   )
   const {
     data: apiCertificates,
@@ -89,6 +96,11 @@ export function OrganizerCertificatesPage() {
     : undefined
 
   async function revokeCertificate(certificate: ApiCertificate) {
+    if (!organizerId) {
+      setActionError('Profil organizer belum siap. Coba muat ulang akun organizer.')
+      return
+    }
+
     const previous = overrides[certificate.id] ?? certificate
     setActionError(null)
     setPendingCertificateIds((current) =>
@@ -124,6 +136,11 @@ export function OrganizerCertificatesPage() {
   }
 
   async function createReplacement(certificate: ApiCertificate) {
+    if (!organizerId) {
+      setActionError('Profil organizer belum siap. Coba muat ulang akun organizer.')
+      return
+    }
+
     setActionError(null)
     setPendingCertificateIds((current) =>
       current.includes(certificate.id) ? current : [...current, certificate.id],
@@ -288,7 +305,7 @@ export function OrganizerCertificatesPage() {
         </div>
       </section>
 
-      {selectedCertificate ? (
+      {selectedCertificate && organizerId ? (
         <CertificateDetailModal
           organizerId={organizerId}
           certificate={selectedCertificate}
