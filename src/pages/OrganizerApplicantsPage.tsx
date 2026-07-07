@@ -114,9 +114,14 @@ export function OrganizerApplicantsPage() {
     )
 
     try {
-      const updatedApplication = mapApplication(
+      const checkedInApplication = mapApplication(
         await organizerApi.checkInApplication(organizerId, applicationId),
       )
+      const updatedApplication =
+        checkedInApplication.status === 'Completed'
+          ? checkedInApplication
+          : await completeApplication(applicationId)
+
       replaceApplication(updatedApplication)
       void reload()
     } catch (error) {
@@ -149,6 +154,10 @@ export function OrganizerApplicantsPage() {
     )
 
     try {
+      if (application?.status !== 'Completed') {
+        await completeApplication(applicationId)
+      }
+
       await organizerApi.issueCertificate(organizerId, applicationId, { hours })
       void reload()
     } catch (error) {
@@ -202,6 +211,24 @@ export function OrganizerApplicantsPage() {
         app.id === updatedApplication.id ? updatedApplication : app,
       ),
     )
+  }
+
+  async function completeApplication(applicationId: string) {
+    if (!organizerId) {
+      throw new Error('Profil organizer belum siap. Coba muat ulang akun organizer.')
+    }
+
+    const completedApplication = mapApplication(
+      await organizerApi.updateApplicationStatus(
+        organizerId,
+        applicationId,
+        'Completed',
+      ),
+    )
+
+    replaceApplication(completedApplication)
+
+    return completedApplication
   }
 
   const rows = useMemo(() => {
