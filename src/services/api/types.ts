@@ -67,6 +67,7 @@ export type ApiUser = {
   joinedAt?: string
   avatarInitials?: string
   organizerId?: string
+  organizer?: Organizer | null
 }
 
 export type ApiAuthResponse = {

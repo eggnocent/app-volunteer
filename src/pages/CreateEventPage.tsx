@@ -19,7 +19,7 @@ import {
   getVolunteerRoleLabel,
   volunteerRoleOptions,
 } from '@/lib/display-labels'
-import { createOrganizerFallback } from '@/lib/organizer-profile'
+import { createOrganizerFallback, getSessionOrganizerId } from '@/lib/organizer-profile'
 import { cn } from '@/lib/utils'
 import { mapEvent, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
@@ -36,7 +36,7 @@ export function CreateEventPage({ pageMode = 'create' }: CreateEventPageProps) {
   const { user } = useAuth()
   const { eventId } = useParams()
   const isEditMode = pageMode === 'edit'
-  const organizerId = user?.organizerId
+  const organizerId = getSessionOrganizerId(user)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<EventCategory>('Pendidikan')
   const [mode, setMode] = useState<EventMode>('Offline')

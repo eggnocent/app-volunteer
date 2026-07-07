@@ -21,6 +21,7 @@ import {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate } from '@/lib/format'
+import { getSessionOrganizerId } from '@/lib/organizer-profile'
 import { mapApplication, mapEvent, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
 import type { ApiApplication, ApiEvent } from '@/services/api'
@@ -36,7 +37,7 @@ export function OrganizerApplicantsPage() {
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const focusedEventId = searchParams.get('event')
-  const organizerId = user?.organizerId
+  const organizerId = getSessionOrganizerId(user)
   const fallbackResource = useMemo(
     () => ({
       applications: organizerId ? initialApplications : [],

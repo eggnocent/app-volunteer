@@ -5,12 +5,13 @@ import {
   CheckCircle2,
   Clock3,
   MessageCircle,
+  RefreshCw,
   ShieldCheck,
   Star,
   TrendingUp,
   Users,
 } from 'lucide-react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
@@ -21,12 +22,10 @@ import {
   StatusBadge,
 } from '@/components'
 import {
-  events,
   getEventById,
   getOrganizerById,
   getOrganizerEvents,
   organizerMetrics,
-  organizers,
   platformUsers,
   volunteerApplications,
   volunteerProfile,
@@ -34,13 +33,12 @@ import {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate, getFillPercentage } from '@/lib/format'
-import { createOrganizerFallback } from '@/lib/organizer-profile'
+import { createOrganizerFallback, getSessionOrganizerId } from '@/lib/organizer-profile'
 import { mapApplication, mapEvent, mapOrganizer, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
 import type { ApiApplication } from '@/services/api'
 import type { EventCategory } from '@/types/migunani'
 
-const activeOrganizerId = 'org-aksara-muda'
 const metricIcons = [CalendarPlus, Users, TrendingUp, Clock3]
 const metricTones = ['green', 'yellow', 'dark', 'neutral'] as const
 const demandCategories: EventCategory[] = [
@@ -51,18 +49,19 @@ const demandCategories: EventCategory[] = [
 ]
 
 export function OrganizerDashboardPage() {
-  const { user } = useAuth()
-  const hasOrganizerId = Boolean(user?.organizerId)
-  const fallbackOrganizer = hasOrganizerId
-    ? getOrganizerById(activeOrganizerId) ?? organizers[0]
-    : createOrganizerFallback(user)
+  const { refresh, user } = useAuth()
+  const [isRefreshingSession, setIsRefreshingSession] = useState(false)
+  const organizerId = getSessionOrganizerId(user)
+  const hasOrganizerId = Boolean(organizerId)
+  const localOrganizer = organizerId ? getOrganizerById(organizerId) : undefined
+  const fallbackOrganizer = user?.organizer ?? localOrganizer ?? createOrganizerFallback(user)
   const fallbackResource = useMemo(
     () => {
-      const fallbackEvents = hasOrganizerId ? getOrganizerEvents(fallbackOrganizer.id) : []
+      const fallbackEvents = localOrganizer ? getOrganizerEvents(localOrganizer.id) : []
 
       return {
         organizer: fallbackOrganizer,
-        events: fallbackEvents.length > 0 ? fallbackEvents : hasOrganizerId ? events.slice(0, 4) : [],
+        events: fallbackEvents.length > 0 ? fallbackEvents : [],
         applications: hasOrganizerId ? volunteerApplications : [],
         applicantIdentities: hasOrganizerId
           ? getFallbackApplicantIdentities(volunteerApplications)
@@ -70,9 +69,8 @@ export function OrganizerDashboardPage() {
         metrics: hasOrganizerId ? organizerMetrics : getEmptyOrganizerMetrics(),
       }
     },
-    [fallbackOrganizer, hasOrganizerId],
+    [fallbackOrganizer, hasOrganizerId, localOrganizer],
   )
-  const organizerId = user?.organizerId
   const loadDashboard = useCallback(async () => {
     if (!organizerId) {
       return fallbackResource
@@ -92,8 +90,56 @@ export function OrganizerDashboardPage() {
     data: resource,
     error: dashboardError,
     isLoading,
+    reload,
   } = useAsyncResource(loadDashboard, fallbackResource)
+  const refreshOrganizerStatus = useCallback(async () => {
+    setIsRefreshingSession(true)
+
+    try {
+      const currentUser = await refresh()
+
+      if (organizerId) {
+        await reload()
+        return
+      }
+
+      if (getSessionOrganizerId(currentUser)) {
+        await reload()
+      }
+    } finally {
+      setIsRefreshingSession(false)
+    }
+  }, [organizerId, refresh, reload])
+  const revalidateDashboard = useCallback(async () => {
+    if (!organizerId) {
+      await refreshOrganizerStatus()
+      return
+    }
+
+    await reload()
+  }, [organizerId, refreshOrganizerStatus, reload])
+
+  useEffect(() => {
+    const handleFocus = () => {
+      void revalidateDashboard()
+    }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void revalidateDashboard()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [revalidateDashboard])
+
   const { organizer } = resource
+  const isRefreshingOrganizer = isLoading || isRefreshingSession
   const visibleEvents = resource.events
   const applicantRows = resource.applications
     .map((application) => ({
@@ -130,6 +176,12 @@ export function OrganizerDashboardPage() {
           tone="error"
         />
       ) : null}
+      {!organizerId ? (
+        <ApiNotice
+          message="Profil organizer sedang disiapkan. Jika admin baru memverifikasi akun ini, muat ulang status untuk mengambil data terbaru."
+          tone="loading"
+        />
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -150,7 +202,7 @@ export function OrganizerDashboardPage() {
             <span className="flex size-14 items-center justify-center rounded-md bg-secondary font-heading text-xl font-extrabold text-secondary-foreground">
               {organizer.logoInitial}
             </span>
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="font-heading text-xl font-extrabold">{organizer.name}</h2>
               <p className="mt-1 text-sm text-primary-foreground/70">
                 {organizer.type} · {organizer.city}
@@ -171,6 +223,18 @@ export function OrganizerDashboardPage() {
               Respons {organizer.responseTime}
             </span>
           </div>
+          <button
+            type="button"
+            onClick={() => void refreshOrganizerStatus()}
+            disabled={isRefreshingOrganizer}
+            className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-primary-foreground/25 px-4 text-sm font-bold text-primary-foreground transition hover:bg-primary-foreground/10 disabled:cursor-wait disabled:opacity-70"
+          >
+            <RefreshCw
+              size={16}
+              className={isRefreshingOrganizer ? 'animate-spin' : undefined}
+            />
+            {isRefreshingOrganizer ? 'Memuat status...' : 'Muat ulang status'}
+          </button>
         </article>
       </section>
 

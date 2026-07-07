@@ -14,6 +14,7 @@ import { ConfirmDialog, Dialog, PageHeader, StatsCard } from '@/components'
 import { certificates, getEventById, getOrganizerById, platformUsers } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { formatDate } from '@/lib/format'
+import { getSessionOrganizerId } from '@/lib/organizer-profile'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/providers/useAuth'
 import { organizerApi } from '@/services/api'
@@ -23,7 +24,7 @@ const fallbackOrganizerId = 'org-aksara-muda'
 
 export function OrganizerCertificatesPage() {
   const { user } = useAuth()
-  const organizerId = user?.organizerId
+  const organizerId = getSessionOrganizerId(user)
   const fallbackCertificates = useMemo<ApiCertificate[]>(() => {
     if (!organizerId) {
       return []

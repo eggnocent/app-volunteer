@@ -9,6 +9,7 @@ import {
   createVolunteerProfileFallback,
   normalizeVolunteerProfile,
 } from '@/lib/volunteer-profile'
+import { getSessionOrganizerId } from '@/lib/organizer-profile'
 import { mapEvent, organizerApi, publicApi, volunteerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
 import type {
@@ -50,15 +51,15 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
     () => createVolunteerProfileFallback(user),
     [user],
   )
+  const organizerId = getSessionOrganizerId(user)
   const initialResource = useMemo<EventsResource>(
     () => ({
-      events: viewer === 'organizer' && !user?.organizerId ? [] : events,
+      events: viewer === 'organizer' && !organizerId ? [] : events,
       savedEventIds: fallbackProfile.savedEventIds,
       profile: fallbackProfile,
     }),
-    [fallbackProfile, user?.organizerId, viewer],
+    [fallbackProfile, organizerId, viewer],
   )
-  const organizerId = user?.organizerId
   const loadEvents = useCallback(async () => {
     if (viewer === 'organizer' && !organizerId) {
       return initialResource
