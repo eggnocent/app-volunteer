@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 
+import { isUserAllowedToAccess } from '@/lib/user-status'
 import { useAuth } from '@/providers/useAuth'
 import type { UserRole } from '@/types/migunani'
 import type { ReactNode } from 'react'
@@ -16,7 +17,7 @@ export function ProtectedRoute({
   loginPath,
   children,
 }: ProtectedRouteProps) {
-  const { user, status, refresh } = useAuth()
+  const { logout, user, status, refresh } = useAuth()
   const location = useLocation()
 
   useEffect(() => {
@@ -24,6 +25,12 @@ export function ProtectedRoute({
       void refresh()
     }
   }, [refresh, status])
+
+  useEffect(() => {
+    if (user && !isUserAllowedToAccess(user)) {
+      void logout()
+    }
+  }, [logout, user])
 
   if (status === 'idle' || status === 'loading') {
     return (
@@ -45,6 +52,10 @@ export function ProtectedRoute({
     const next = encodeURIComponent(`${location.pathname}${location.search}`)
 
     return <Navigate to={`${loginPath}?next=${next}`} replace />
+  }
+
+  if (!isUserAllowedToAccess(user)) {
+    return <Navigate to={loginPath} replace />
   }
 
   if (!roles.includes(user.role)) {

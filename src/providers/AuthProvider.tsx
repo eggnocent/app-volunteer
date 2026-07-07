@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 
 import { AuthContext } from '@/providers/auth-context'
+import { getBlockedUserMessage, isUserAllowedToAccess } from '@/lib/user-status'
 import { authApi } from '@/services/api'
 import type { AuthContextValue, AuthStatus } from '@/providers/auth-context'
 import type {
@@ -20,6 +21,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const currentUser = await authApi.me()
+
+      if (!isUserAllowedToAccess(currentUser)) {
+        await authApi.logout().catch(() => undefined)
+        setUser(null)
+        setStatus('guest')
+        setError(getBlockedUserMessage(currentUser))
+        return null
+      }
+
       setUser(currentUser)
       setStatus('authenticated')
       return currentUser
@@ -39,6 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authApi.login(payload)
       const currentUser = await authApi.me().catch(() => response.user)
 
+      if (!isUserAllowedToAccess(currentUser)) {
+        await authApi.logout().catch(() => undefined)
+        setUser(null)
+        setStatus('error')
+        setError(getBlockedUserMessage(currentUser))
+        throw new Error(getBlockedUserMessage(currentUser))
+      }
+
       setUser(currentUser)
       setStatus('authenticated')
       return currentUser
@@ -57,6 +75,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authApi.register(payload)
       const currentUser = await authApi.me().catch(() => response.user)
+
+      if (!isUserAllowedToAccess(currentUser)) {
+        await authApi.logout().catch(() => undefined)
+        setUser(null)
+        setStatus('error')
+        setError(getBlockedUserMessage(currentUser))
+        throw new Error(getBlockedUserMessage(currentUser))
+      }
 
       setUser(currentUser)
       setStatus('authenticated')
