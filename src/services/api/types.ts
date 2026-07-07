@@ -160,6 +160,7 @@ export type ApiApplication = Omit<VolunteerApplication, 'role' | 'status'> & {
   applicantCity?: string
   applicant_city?: string
   checkedInAt?: string | null
+  checked_in_at?: string | null
 }
 
 export type ApiCertificate = Certificate & {

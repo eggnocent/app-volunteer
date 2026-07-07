@@ -252,10 +252,11 @@ export function OrganizerApplicantsPage() {
   const totalCount = applications.filter(
     (app) => !focusedEventId || app.eventId === focusedEventId
   ).length
-  const checkedInCount = checkedInIds.filter((id) => {
-    const application = applications.find((app) => app.id === id)
-    return application && (!focusedEventId || application.eventId === focusedEventId)
-  }).length
+  const checkedInCount = applications.filter(
+    (application) =>
+      (!focusedEventId || application.eventId === focusedEventId) &&
+      isApplicationCheckedIn(application, checkedInIds),
+  ).length
   const selectedApplication = selectedApplicationId
     ? applications.find((app) => app.id === selectedApplicationId)
     : undefined
@@ -376,6 +377,8 @@ export function OrganizerApplicantsPage() {
           ) : (
             rows.map(({ application, event }) => {
               const isPending = pendingApplicationIds.includes(application.id)
+              const checkedIn = isApplicationCheckedIn(application, checkedInIds)
+              const certificateIssued = issuedCertificateIds.includes(application.id)
 
               return (
               <article
@@ -442,7 +445,7 @@ export function OrganizerApplicantsPage() {
                         <X size={16} />
                       </button>
                     </>
-                  ) : application.status === 'Accepted' && !checkedInIds.includes(application.id) ? (
+                  ) : application.status === 'Accepted' && !checkedIn ? (
                     <button
                       type="button"
                       disabled={isPending}
@@ -452,8 +455,7 @@ export function OrganizerApplicantsPage() {
                     >
                       {isPending ? 'Menyimpan...' : 'Check-in'}
                     </button>
-                  ) : application.status === 'Completed' &&
-                    !issuedCertificateIds.includes(application.id) ? (
+                  ) : checkedIn && !certificateIssued ? (
                     <button
                       type="button"
                       disabled={isPending}
@@ -463,12 +465,9 @@ export function OrganizerApplicantsPage() {
                     >
                       {isPending ? 'Menerbitkan...' : 'Terbitkan'}
                     </button>
-                  ) : checkedInIds.includes(application.id) ||
-                    issuedCertificateIds.includes(application.id) ? (
+                  ) : certificateIssued ? (
                     <span className="text-xs font-bold text-primary">
-                      {issuedCertificateIds.includes(application.id)
-                        ? 'Sertifikat terbit'
-                        : 'Sudah hadir'}
+                      Sertifikat terbit
                     </span>
                   ) : (
                     <span className="text-xs font-bold text-muted-foreground/50">
@@ -489,7 +488,7 @@ export function OrganizerApplicantsPage() {
           event={selectedEvent}
           organizerId={organizerId}
           fallbackApplicantIdentity={resource.applicantIdentities[selectedApplication.id]}
-          checkedIn={checkedInIds.includes(selectedApplication.id)}
+          checkedIn={isApplicationCheckedIn(selectedApplication, checkedInIds)}
           isPending={pendingApplicationIds.includes(selectedApplication.id)}
           onClose={() => setSelectedApplicationId(null)}
           onApprove={() => handleApprove(selectedApplication.id)}
@@ -630,7 +629,7 @@ function ApplicantDetailModal({
               <ClipboardCheck size={16} />
               {isPending ? 'Menyimpan...' : 'Check-in relawan'}
             </button>
-          ) : application.status === 'Completed' && !certificateIssued ? (
+          ) : checkedIn && !certificateIssued ? (
             <button
               type="button"
               disabled={isPending}
@@ -739,6 +738,15 @@ function dedupeEvents(sourceEvents: VolunteerEvent[]) {
       .reduce((eventMap, event) => eventMap.set(event.id, event), new Map<string, VolunteerEvent>())
       .values(),
   )
+}
+
+function isApplicationCheckedIn(
+  application: VolunteerApplication,
+  checkedInIds: string[],
+) {
+  return application.status === 'Completed' ||
+    Boolean(application.checkedInAt) ||
+    checkedInIds.includes(application.id)
 }
 
 function getApplicantIdentities(

@@ -89,6 +89,7 @@ export function mapApplication(application: ApiApplication): VolunteerApplicatio
     submittedAt: application.submittedAt,
     motivation: application.motivation,
     availability: application.availability ?? [],
+    checkedInAt: application.checkedInAt ?? application.checked_in_at,
   }
 }
 

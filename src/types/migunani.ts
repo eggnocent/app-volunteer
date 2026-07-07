@@ -97,6 +97,7 @@ export type VolunteerApplication = {
   submittedAt: string
   motivation: string
   availability: string[]
+  checkedInAt?: string | null
 }
 
 export type Certificate = {
