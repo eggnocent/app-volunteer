@@ -31,6 +31,10 @@ import {
   getEventModeLabel,
   getVolunteerRoleLabel,
 } from '@/lib/display-labels'
+import {
+  getClosedEventMessage,
+  isEventOpenForRegistration,
+} from '@/lib/event-availability'
 import { formatDate, formatEventTime } from '@/lib/format'
 import { PagePlaceholder } from '@/pages/PagePlaceholder'
 import { useAuth } from '@/providers/useAuth'
@@ -219,6 +223,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
                       isAdminView={isAdminView}
                       canManageSpecificEvent={canManageSpecificEvent}
                       eventId={event.id}
+                      eventIsOpen={isEventOpenForRegistration(event)}
                       status={volunteerApplication?.status}
                       fullWidth
                     />
@@ -357,6 +362,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
                 primaryAction={getRelatedEventAction(
                   actionContext,
                   relatedEvent.id,
+                  relatedEvent,
                   viewer === 'organizer',
                 )}
               />
@@ -371,6 +377,7 @@ export function EventDetailPage({ viewer = 'public' }: EventDetailPageProps) {
 function getRelatedEventAction(
   context: EventActionContext,
   eventId: string,
+  event: VolunteerEvent,
   canEditSpecificEvent: boolean,
 ) {
   if (context === 'admin') {
@@ -395,10 +402,18 @@ function getRelatedEventAction(
   }
 
   if (context === 'volunteer') {
+    if (!isEventOpenForRegistration(event)) {
+      return undefined
+    }
+
     return {
       label: 'Daftar',
       to: `/volunteer/apply/${eventId}`,
     }
+  }
+
+  if (!isEventOpenForRegistration(event)) {
+    return undefined
   }
 
   return {
@@ -488,6 +503,7 @@ function EventSidebar({
       isAdminView={isAdminView}
       canManageSpecificEvent={canManageSpecificEvent}
       eventId={event.id}
+      eventIsOpen={isEventOpenForRegistration(event)}
       status={status}
       fullWidth
     />
@@ -509,6 +525,7 @@ function EventAction({
   isAdminView,
   canManageSpecificEvent,
   eventId,
+  eventIsOpen,
   status,
   fullWidth = false,
 }: {
@@ -518,6 +535,7 @@ function EventAction({
   isAdminView: boolean
   canManageSpecificEvent: boolean
   eventId: string
+  eventIsOpen: boolean
   status?: ApplicationStatus
   fullWidth?: boolean
 }) {
@@ -591,6 +609,14 @@ function EventAction({
           Lihat aplikasi
           <ArrowRight size={17} />
         </Link>
+      </div>
+    )
+  }
+
+  if (!eventIsOpen) {
+    return (
+      <div className="rounded-md border bg-muted px-4 py-3 text-sm font-bold text-muted-foreground">
+        {getClosedEventMessage()}
       </div>
     )
   }

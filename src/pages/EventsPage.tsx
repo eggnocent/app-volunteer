@@ -5,6 +5,7 @@ import { EventCard, FilterBar, PageHeader } from '@/components'
 import { events, getOrganizerById } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getEventMatch } from '@/lib/match'
+import { isEventOpenForRegistration } from '@/lib/event-availability'
 import {
   createVolunteerProfileFallback,
   normalizeVolunteerProfile,
@@ -135,6 +136,13 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
     const query = search.trim().toLowerCase()
 
     return resource.events.filter((event) => {
+      if (
+        (actionContext === 'volunteer' || viewer === 'public') &&
+        !isEventOpenForRegistration(event)
+      ) {
+        return false
+      }
+
       const organizer = resource.organizers[event.id] ?? getOrganizerById(event.organizerId)
       const matchesSearch =
         query.length === 0 ||
@@ -158,7 +166,15 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 
       return matchesSearch && matchesCategory && matchesMode
     })
-  }, [resource.events, resource.organizers, search, selectedCategory, selectedMode])
+  }, [
+    actionContext,
+    resource.events,
+    resource.organizers,
+    search,
+    selectedCategory,
+    selectedMode,
+    viewer,
+  ])
 
   const sortedEvents = useMemo(() => {
     return [...filteredEvents].sort((a, b) => {
@@ -264,7 +280,11 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
               onSavedChange={isVolunteerContext ? toggleSaved : undefined}
               detailPathPrefix={detailPathPrefix}
               variant={view}
-              primaryAction={getEventCardAction(actionContext, event.id, viewer === 'organizer')}
+              primaryAction={getEventCardAction(
+                actionContext,
+                event,
+                viewer === 'organizer',
+              )}
               {...(isVolunteerContext
                 ? getEventMatch(event, resource.profile)
                 : {})}
@@ -285,7 +305,7 @@ export function EventsPage({ viewer = 'public' }: EventsPageProps) {
 
 function getEventCardAction(
   context: EventActionContext,
-  eventId: string,
+  event: VolunteerEvent,
   canEditSpecificEvent: boolean,
 ) {
   if (context === 'admin') {
@@ -305,20 +325,28 @@ function getEventCardAction(
 
     return {
       label: 'Edit event',
-      to: `/organizer/events/${eventId}/edit`,
+      to: `/organizer/events/${event.id}/edit`,
     }
   }
 
   if (context === 'volunteer') {
+    if (!isEventOpenForRegistration(event)) {
+      return undefined
+    }
+
     return {
       label: 'Daftar',
-      to: `/volunteer/apply/${eventId}`,
+      to: `/volunteer/apply/${event.id}`,
     }
+  }
+
+  if (!isEventOpenForRegistration(event)) {
+    return undefined
   }
 
   return {
     label: 'Daftar',
-    to: `/?next=${encodeURIComponent(`/volunteer/apply/${eventId}`)}`,
+    to: `/?next=${encodeURIComponent(`/volunteer/apply/${event.id}`)}`,
   }
 }
 

@@ -25,6 +25,10 @@ import { getEventById, getOrganizerById } from '@/data'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate, formatEventTime } from '@/lib/format'
+import {
+  getClosedEventMessage,
+  isEventOpenForRegistration,
+} from '@/lib/event-availability'
 import { cn } from '@/lib/utils'
 import {
   createVolunteerProfileFallback,
@@ -188,6 +192,16 @@ export function ApplyPage() {
     )
   }
 
+  if (!isEventOpenForRegistration(event)) {
+    return (
+      <PagePlaceholder
+        eyebrow="Pendaftaran ditutup"
+        title="Event tidak menerima pendaftaran."
+        description={getClosedEventMessage(event)}
+      />
+    )
+  }
+
   function toggleAvailability(option: string) {
     setAvailability((current) =>
       current.includes(option)
@@ -203,7 +217,8 @@ export function ApplyPage() {
       return
     }
 
-    if (!event || !selectedRole) {
+    if (!event || !selectedRole || !isEventOpenForRegistration(event)) {
+      setSubmitError(getClosedEventMessage(event))
       return
     }
 
