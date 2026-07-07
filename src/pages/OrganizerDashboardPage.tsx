@@ -33,6 +33,7 @@ import {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate, getFillPercentage } from '@/lib/format'
+import { getApiApplicantIdentity } from '@/lib/applicant-identity'
 import {
   createOrganizerFallback,
   getSessionOrganizer,
@@ -412,22 +413,15 @@ function getEmptyOrganizerMetrics() {
 }
 
 function getApplicantIdentities(applications: ApiApplication[]) {
-  const fallbackIdentities = getFallbackApplicantIdentities(applications)
+  const fallbackIdentities =
+    applications.length === 0 ? getFallbackApplicantIdentities(applications) : {}
 
   return applications.reduce<Record<string, { name: string; profileLine: string }>>(
     (identityMap, application) => {
-      const volunteer = application.volunteer
-      const profileLine = [volunteer?.city, volunteer?.email]
-        .filter(Boolean)
-        .join(' · ')
-
-      identityMap[application.id] = {
-        name: volunteer?.name ?? fallbackIdentities[application.id]?.name ?? volunteerProfile.name,
-        profileLine:
-          profileLine ||
-          fallbackIdentities[application.id]?.profileLine ||
-          `${volunteerProfile.major} · ${volunteerProfile.university}`,
-      }
+      identityMap[application.id] = getApiApplicantIdentity(
+        application,
+        fallbackIdentities[application.id],
+      )
 
       return identityMap
     },

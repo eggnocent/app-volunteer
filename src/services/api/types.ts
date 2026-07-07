@@ -140,6 +140,25 @@ export type ApiApplication = Omit<VolunteerApplication, 'role' | 'status'> & {
   status: ApplicationStatus
   event?: ApiEvent
   volunteer?: ApiUser
+  user?: ApiUser
+  applicant?: ApiUser
+  profile?: ApiUser
+  volunteerProfile?: ApiUser
+  volunteer_profile?: ApiUser
+  volunteerName?: string
+  volunteer_name?: string
+  applicantName?: string
+  applicant_name?: string
+  userName?: string
+  user_name?: string
+  volunteerEmail?: string
+  volunteer_email?: string
+  applicantEmail?: string
+  applicant_email?: string
+  volunteerCity?: string
+  volunteer_city?: string
+  applicantCity?: string
+  applicant_city?: string
   checkedInAt?: string | null
 }
 

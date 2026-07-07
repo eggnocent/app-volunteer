@@ -21,17 +21,16 @@ import {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { getVolunteerRoleLabel } from '@/lib/display-labels'
 import { formatDate } from '@/lib/format'
+import {
+  getApiApplicantIdentity,
+  getApplicationVolunteer,
+} from '@/lib/applicant-identity'
 import { getSessionOrganizerId } from '@/lib/organizer-profile'
 import { mapApplication, mapEvent, organizerApi } from '@/services/api'
 import { useAuth } from '@/providers/useAuth'
 import type { ApiApplication, ApiEvent } from '@/services/api'
+import type { ApplicantIdentity } from '@/lib/applicant-identity'
 import type { ApplicationStatus, VolunteerApplication, VolunteerEvent } from '@/types/migunani'
-
-type ApplicantIdentity = {
-  name: string
-  profileLine: string
-  city?: string
-}
 
 export function OrganizerApplicantsPage() {
   const [searchParams] = useSearchParams()
@@ -554,20 +553,24 @@ function ApplicantDetailModal({
     null,
   )
   const volunteerName =
-    detail?.volunteer?.name ?? fallbackApplicantIdentity?.name ?? volunteerProfile.name
+    getApiApplicantIdentity(detail ?? application, fallbackApplicantIdentity).name
+  const detailIdentity = detail
+    ? getApiApplicantIdentity(detail, fallbackApplicantIdentity)
+    : fallbackApplicantIdentity
+  const volunteer = getApplicationVolunteer(detail ?? application)
   const volunteerProfileLine =
     [
-      detail?.volunteer?.city,
-      detail?.volunteer?.email,
+      volunteer?.city,
+      volunteer?.email,
     ]
       .filter(Boolean)
       .join(' · ') ||
-    fallbackApplicantIdentity?.profileLine ||
+    detailIdentity?.profileLine ||
     `${volunteerProfile.major} · ${volunteerProfile.university}`
   const motivation = detail?.motivation ?? application.motivation
   const availability = detail?.availability ?? application.availability
   const volunteerCity =
-    detail?.volunteer?.city ?? fallbackApplicantIdentity?.city ?? volunteerProfile.city
+    volunteer?.city ?? detailIdentity?.city ?? volunteerProfile.city
   const matchNotes = [
     application.role,
     event?.category,
@@ -742,37 +745,19 @@ function getApplicantIdentities(
   apiApplications: ApiApplication[],
   mappedApplications: VolunteerApplication[],
 ) {
-  const fallbackIdentities = getFallbackApplicantIdentities(mappedApplications)
+  const fallbackIdentities =
+    apiApplications.length === 0 ? getFallbackApplicantIdentities(mappedApplications) : {}
 
   return apiApplications.reduce<Record<string, ApplicantIdentity>>(
     (identityMap, application) => {
-      identityMap[application.id] = getApplicantIdentity(application, fallbackIdentities[application.id])
+      identityMap[application.id] = getApiApplicantIdentity(
+        application,
+        fallbackIdentities[application.id],
+      )
       return identityMap
     },
     {},
   )
-}
-
-function getApplicantIdentity(
-  application: ApiApplication,
-  fallbackIdentity?: ApplicantIdentity,
-): ApplicantIdentity {
-  const volunteer = application.volunteer
-  const profileLine = [
-    volunteer?.city,
-    volunteer?.email,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-
-  return {
-    name: volunteer?.name ?? fallbackIdentity?.name ?? volunteerProfile.name,
-    profileLine:
-      profileLine ||
-      fallbackIdentity?.profileLine ||
-      `${volunteerProfile.major} · ${volunteerProfile.university}`,
-    city: volunteer?.city ?? fallbackIdentity?.city ?? volunteerProfile.city,
-  }
 }
 
 function getFallbackApplicantIdentities(applications: VolunteerApplication[]) {
