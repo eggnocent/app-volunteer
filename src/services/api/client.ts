@@ -1,3 +1,4 @@
+import { clearStoredToken, getStoredToken } from '@/lib/auth-token'
 import type { ApiErrorPayload } from '@/services/api/types'
 
 const DEFAULT_API_BASE_URL = 'https://api.wishmeluck.web.id'
@@ -8,7 +9,6 @@ export const API_MODE = import.meta.env.VITE_API_MODE ?? 'fallback'
 
 type ApiRequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown
-  skipCsrf?: boolean
 }
 
 export class ApiError extends Error {
@@ -23,47 +23,73 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(
-  path: string,
-  options: ApiRequestOptions = {},
-): Promise<T> {
+let unauthorizedHandler: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler
+}
+
+function buildRequestInit(options: ApiRequestOptions) {
   const method = options.method?.toUpperCase() ?? 'GET'
   const headers = new Headers(options.headers)
-  const { body, skipCsrf = false, ...requestOptions } = options
+  const { body, ...requestOptions } = options
 
   headers.set('Accept', 'application/json')
 
-  const init: RequestInit = {
-    ...requestOptions,
-    method,
-    headers,
-    credentials: 'include',
+  const token = getStoredToken()
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
   }
+
+  const init: RequestInit = { ...requestOptions, method, headers }
 
   if (body !== undefined) {
     headers.set('Content-Type', 'application/json')
     init.body = JSON.stringify(body)
   }
 
-  if (requiresCsrf(method) && !skipCsrf) {
-    headers.set('X-XSRF-TOKEN', getCookie('XSRF-TOKEN') ?? '')
+  return { init, hadToken: Boolean(token) }
+}
+
+function handleUnauthorized(status: number, hadToken: boolean) {
+  if (status === 401 && hadToken) {
+    clearStoredToken()
+    unauthorizedHandler?.()
   }
+}
+
+export async function apiRequest<T>(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  const { init, hadToken } = buildRequestInit(options)
 
   const response = await fetch(toApiUrl(path), init)
   const payload = await parseResponse(response)
 
   if (!response.ok) {
+    handleUnauthorized(response.status, hadToken)
     throw new ApiError(response.status, normalizeErrorPayload(payload))
   }
 
   return payload as T
 }
 
-export async function csrf() {
-  await apiRequest<void>('/sanctum/csrf-cookie', {
-    method: 'GET',
-    skipCsrf: true,
-  })
+export async function apiRequestBlob(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<Blob> {
+  const { init, hadToken } = buildRequestInit(options)
+
+  const response = await fetch(toApiUrl(path), init)
+
+  if (!response.ok) {
+    handleUnauthorized(response.status, hadToken)
+    const payload = await parseResponse(response)
+    throw new ApiError(response.status, normalizeErrorPayload(payload))
+  }
+
+  return response.blob()
 }
 
 export function toApiUrl(path: string) {
@@ -101,25 +127,6 @@ function isVercelAppHost() {
     typeof window !== 'undefined' &&
     window.location.hostname.endsWith('.vercel.app')
   )
-}
-
-function requiresCsrf(method: string) {
-  return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
-}
-
-function getCookie(name: string) {
-  if (typeof document === 'undefined') {
-    return null
-  }
-
-  const value = document.cookie
-    .split('; ')
-    .find((cookie) => cookie.startsWith(`${name}=`))
-    ?.split('=')
-    .slice(1)
-    .join('=')
-
-  return value ? decodeURIComponent(value) : null
 }
 
 async function parseResponse(response: Response) {

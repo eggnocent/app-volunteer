@@ -1,4 +1,4 @@
-import { apiRequest, csrf } from '@/services/api/client'
+import { apiRequest } from '@/services/api/client'
 import { unwrapData } from '@/services/api/adapters'
 import type {
   ApiAuthResponse,
@@ -9,8 +9,6 @@ import type {
 } from '@/services/api/types'
 
 export async function login(payload: ApiLoginPayload) {
-  await csrf()
-
   const response = unwrapData(
     await apiRequest<ApiEnvelope<ApiAuthResponse>>('/api/auth/login', {
       method: 'POST',
@@ -18,12 +16,10 @@ export async function login(payload: ApiLoginPayload) {
     }),
   )
 
-  return { user: normalizeAuthUser(response) }
+  return { user: normalizeAuthUser(response), token: response.token }
 }
 
 export async function register(payload: ApiRegisterPayload) {
-  await csrf()
-
   const response = unwrapData(
     await apiRequest<ApiEnvelope<ApiAuthResponse>>('/api/auth/register', {
       method: 'POST',
@@ -31,7 +27,7 @@ export async function register(payload: ApiRegisterPayload) {
     }),
   )
 
-  return { user: normalizeAuthUser(response) }
+  return { user: normalizeAuthUser(response), token: response.token }
 }
 
 export async function me() {

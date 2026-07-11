@@ -1,8 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { AuthContext } from '@/providers/auth-context'
+import { clearStoredToken, getStoredToken, setStoredToken } from '@/lib/auth-token'
 import { getBlockedUserMessage, isUserAllowedToAccess } from '@/lib/user-status'
 import { authApi } from '@/services/api'
+import { setUnauthorizedHandler } from '@/services/api/client'
 import type { AuthContextValue, AuthStatus } from '@/providers/auth-context'
 import type {
   ApiLoginPayload,
@@ -19,10 +21,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStatus('loading')
     setError(null)
 
+    if (!getStoredToken()) {
+      setUser(null)
+      setStatus('guest')
+      return null
+    }
+
     try {
       const currentUser = await authApi.me()
 
       if (!isUserAllowedToAccess(currentUser)) {
+        clearStoredToken()
         await authApi.logout().catch(() => undefined)
         setUser(null)
         setStatus('guest')
@@ -34,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStatus('authenticated')
       return currentUser
     } catch (refreshError) {
+      clearStoredToken()
       setUser(null)
       setStatus('guest')
       setError(getErrorMessage(refreshError))
@@ -47,9 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const response = await authApi.login(payload)
+      setStoredToken(response.token)
       const currentUser = await authApi.me().catch(() => response.user)
 
       if (!isUserAllowedToAccess(currentUser)) {
+        clearStoredToken()
         await authApi.logout().catch(() => undefined)
         setUser(null)
         setStatus('error')
@@ -61,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStatus('authenticated')
       return currentUser
     } catch (loginError) {
+      clearStoredToken()
       setUser(null)
       setStatus('error')
       setError(getErrorMessage(loginError))
@@ -74,9 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const response = await authApi.register(payload)
+      setStoredToken(response.token)
       const currentUser = await authApi.me().catch(() => response.user)
 
       if (!isUserAllowedToAccess(currentUser)) {
+        clearStoredToken()
         await authApi.logout().catch(() => undefined)
         setUser(null)
         setStatus('error')
@@ -88,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStatus('authenticated')
       return currentUser
     } catch (registerError) {
+      clearStoredToken()
       setUser(null)
       setStatus('error')
       setError(getErrorMessage(registerError))
@@ -102,9 +118,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await authApi.logout()
     } finally {
+      clearStoredToken()
       setUser(null)
       setStatus('guest')
     }
+  }, [])
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null)
+      setStatus('guest')
+      setError(null)
+    })
+
+    return () => setUnauthorizedHandler(null)
   }, [])
 
   const value = useMemo<AuthContextValue>(

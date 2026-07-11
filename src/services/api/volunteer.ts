@@ -1,4 +1,4 @@
-import { apiRequest } from '@/services/api/client'
+import { apiRequest, apiRequestBlob } from '@/services/api/client'
 import { unwrapData } from '@/services/api/adapters'
 import type {
   ApiApplication,
@@ -96,4 +96,8 @@ export async function getVolunteerCertificate(certificateId: string) {
 
 export function getVolunteerCertificateDownloadUrl(certificateId: string) {
   return `/api/volunteer/certificates/${certificateId}/download`
+}
+
+export async function downloadVolunteerCertificate(certificateId: string) {
+  return apiRequestBlob(getVolunteerCertificateDownloadUrl(certificateId))
 }

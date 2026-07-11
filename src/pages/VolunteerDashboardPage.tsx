@@ -31,7 +31,6 @@ import {
   mapApplication,
   mapCertificate,
   mapEvent,
-  toApiUrl,
   volunteerApi,
   type ApiVolunteerDashboard,
   type ApiEvent,
@@ -136,9 +135,9 @@ export function VolunteerDashboardPage() {
   const [applications, setApplications] = useState<VolunteerApplication[] | null>(null)
   const [selectedCert, setSelectedCert] = useState<Certificate | null>(null)
   
-  // Simulation states
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadSuccess, setDownloadSuccess] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [appToCancel, setAppToCancel] = useState<string | null>(null)
   const [cancellingApplicationIds, setCancellingApplicationIds] = useState<string[]>([])
 
@@ -209,23 +208,33 @@ export function VolunteerDashboardPage() {
       })
   }
 
-  // Handle download simulation
-  const triggerDownload = () => {
-    if (selectedCert) {
-      window.open(
-        toApiUrl(volunteerApi.getVolunteerCertificateDownloadUrl(selectedCert.id)),
-        '_blank',
-        'noopener,noreferrer',
-      )
+  const triggerDownload = async () => {
+    if (!selectedCert) {
+      return
     }
 
     setIsDownloading(true)
     setDownloadSuccess(false)
-    setTimeout(() => {
-      setIsDownloading(false)
+    setDownloadError(null)
+
+    try {
+      const blob = await volunteerApi.downloadVolunteerCertificate(selectedCert.id)
+      const blobUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = `sertifikat-${selectedCert.id}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(blobUrl)
+
       setDownloadSuccess(true)
       setTimeout(() => setDownloadSuccess(false), 3000)
-    }, 2000)
+    } catch (downloadErrorValue) {
+      setDownloadError(getErrorMessage(downloadErrorValue))
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   const currentHours = dashboard.profile.totalHours
@@ -424,7 +433,11 @@ export function VolunteerDashboardPage() {
           onClose={() => setSelectedCert(null)}
           footer={
             <>
-              {downloadSuccess ? (
+              {downloadError ? (
+                <span className="text-xs font-semibold text-destructive">
+                  {downloadError}
+                </span>
+              ) : downloadSuccess ? (
                 <span className="flex items-center gap-2 text-xs font-bold text-primary">
                   <CheckCircle2 size={14} />
                   Sertifikat berhasil diunduh.
@@ -445,7 +458,7 @@ export function VolunteerDashboardPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={triggerDownload}
+                  onClick={() => void triggerDownload()}
                   disabled={isDownloading}
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:bg-deep-green disabled:cursor-not-allowed disabled:opacity-75"
                 >
@@ -920,4 +933,12 @@ function ApiNotice({
       {message}
     </div>
   )
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Sertifikat belum bisa diunduh.'
 }

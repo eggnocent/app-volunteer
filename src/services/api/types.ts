@@ -75,6 +75,7 @@ export type ApiUser = {
 
 export type ApiAuthResponse = {
   user: ApiUser
+  token: string
 }
 
 export type ApiRegisterPayload = {
